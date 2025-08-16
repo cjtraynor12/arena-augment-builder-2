@@ -4,6 +4,63 @@
     <meta charset="UTF-8">
     <title>Augment Builder</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .save-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-left: 5px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            vertical-align: middle;
+        }
+        
+        .save-icon:hover {
+            opacity: 1;
+        }
+        
+        .save-icon.saved {
+            opacity: 1;
+            filter: hue-rotate(120deg);
+        }
+        
+        .form-row-with-save {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .slider-with-save {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .toast.error {
+            background: #dc3545;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -112,32 +169,84 @@
                         <input name="descriptionFontInput" id="descriptionFontInput" placeholder="e.g., 14px LolBeautfort" oninput="updateCanvasVariable(this.value, 'descriptionFont')"/>
                     </div>
 
+                    <div class="form-row">
+                        <label for="presetSelect">Presets</label>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <select id="presetSelect" onchange="selectPreset(this.value)" style="flex: 1;">
+                                <option value="Default">Default</option>
+                            </select>
+                            <button onclick="saveNewPreset()" title="Save as new preset" style="background-color: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">💾</button>
+                            <button onclick="updateCurrentPreset()" title="Update current preset" style="background-color: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">📝</button>
+                            <button onclick="deleteCurrentPreset()" title="Delete current preset" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️</button>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="form-controls-right">
-                    <form class="sliderForm" oninput="iconXOutput.value = settings['iconXOffset']">
-                        <label for="iconXOffset">Icon X Offset</label>
-                        <input type="range" min="0" max="512" value="156" class="slider" id="iconXOffset" oninput="updateCanvasVariable(parseInt(this.value), 'iconXOffset')">
-                        <output name="iconXOutput" for="iconXOffset">156</output>
-                    </form>
+                    <!-- Screen Navigation -->
+                    <div class="screen-navigation" style="display: flex; gap: 5px; margin-bottom: 10px;">
+                        <button onclick="switchScreen('main')" id="mainScreenBtn" class="screen-btn active" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #007bff; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;">Main</button>
+                        <button onclick="switchScreen('advanced')" id="advancedScreenBtn" class="screen-btn" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #f8f9fa; color: #333; border-radius: 4px; cursor: pointer; font-size: 12px;">Advanced</button>
+                        <button onclick="switchScreen('colors')" id="colorsScreenBtn" class="screen-btn" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #f8f9fa; color: #333; border-radius: 4px; cursor: pointer; font-size: 12px;">Colors</button>
+                    </div>
 
-                    <form class="sliderForm" oninput="iconSizeOutput.value = settings['iconSize']">
-                        <label for="iconSize">Icon Size</label>
-                        <input type="range" min="50" max="300" value="150" class="slider" id="iconSize" oninput="updateCanvasVariable(parseInt(this.value), 'iconSize')">
-                        <output name="iconSizeOutput" for="iconSize">150</output>
-                    </form>
+                    <!-- Main Screen -->
+                    <div id="mainScreen" class="settings-screen">
+                        <div class="sliderForm">
+                            <label for="iconXOffset">Icon X Offset</label>
+                            <input type="range" min="0" max="512" value="156" class="slider" id="iconXOffset" oninput="updateCanvasVariable(parseInt(this.value), 'iconXOffset')">
+                            <output name="iconXOutput" for="iconXOffset">156</output>
+                        </div>
 
-                    <form class="sliderForm" oninput="titleLineHeightOutput.value = settings['titleLineHeight']">
-                        <label for="titleLineHeight">Title Line Height</label>
-                        <input type="range" min="0" max="64" value="26" class="slider" id="titleLineHeight" oninput="updateCanvasVariable(parseInt(this.value), 'titleLineHeight')">
-                        <output name="titleLineHeightOutput" for="titleLineHeight">26</output>
-                    </form>
+                        <div class="sliderForm">
+                            <label for="iconSize">Icon Size</label>
+                            <input type="range" min="50" max="300" value="150" class="slider" id="iconSize" oninput="updateCanvasVariable(parseInt(this.value), 'iconSize')">
+                            <output name="iconSizeOutput" for="iconSize">150</output>
+                        </div>
 
-                    <form class="sliderForm" oninput="descriptionLineHeightOutput.value = settings['descriptionLineHeight']">
-                        <label for="descriptionLineHeight">Description Line Height</label>
-                        <input type="range" min="0" max="64" value="18" class="slider" id="descriptionLineHeight" oninput="updateCanvasVariable(parseInt(this.value), 'descriptionLineHeight')">
-                        <output name="descriptionLineHeightOutput" for="descriptionLineHeight">18</output>
-                    </form>
+                        <div class="sliderForm">
+                            <label for="titleLineHeight">Title Line Height</label>
+                            <input type="range" min="0" max="64" value="26" class="slider" id="titleLineHeight" oninput="updateCanvasVariable(parseInt(this.value), 'titleLineHeight')">
+                            <output name="titleLineHeightOutput" for="titleLineHeight">26</output>
+                        </div>
+
+                        <div class="sliderForm">
+                            <label for="descriptionLineHeight">Description Line Height</label>
+                            <input type="range" min="0" max="64" value="18" class="slider" id="descriptionLineHeight" oninput="updateCanvasVariable(parseInt(this.value), 'descriptionLineHeight')">
+                            <output name="descriptionLineHeightOutput" for="descriptionLineHeight">18</output>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Screen -->
+                    <div id="advancedScreen" class="settings-screen" style="display: none;">
+                        <div class="form-row">
+                            <label for="letterSpacing">Letter Spacing</label>
+                            <input type="number" id="letterSpacing" step="0.1" value="0.5" oninput="updateCanvasVariable(parseFloat(this.value), 'letterSpacing')" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="titleMaxWidth">Title Max Width</label>
+                            <input type="number" id="titleMaxWidth" value="220" oninput="updateCanvasVariable(parseInt(this.value), 'titleMaxWidth')" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="descriptionMaxWidth">Description Max Width</label>
+                            <input type="number" id="descriptionMaxWidth" value="220" oninput="updateCanvasVariable(parseInt(this.value), 'descriptionMaxWidth')" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                    </div>
+
+                    <!-- Colors Screen -->
+                    <div id="colorsScreen" class="settings-screen" style="display: none;">
+                        <div style="margin-bottom: 10px;">
+                            <button onclick="addColorRow()" style="background-color: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 5px;">+ Add Color</button>
+                            <button onclick="saveColorTable()" style="background-color: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 5px;">💾 Save</button>
+                            <button onclick="resetColorTable()" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🔄 Reset</button>
+                        </div>
+                        <div id="colorTableEditor" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
+                            <!-- Color rows will be populated here -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -153,6 +262,363 @@
     </div>
 
     <script>
+        // ===== CALCULATION ENGINE =====
+        class CalculationEngine {
+            constructor() {
+                // Static mappings for known placeholders
+                this.staticMappings = {
+                    '{{ Item_Keyword_OnHit }}': 'On-Hit'
+                };
+                
+                // Common spell property mappings for better descriptions
+                this.spellPropertyMappings = {
+                    'MSAmount': 'Move Speed',
+                    'MovementSpeed': 'Move Speed', 
+                    'BuffDuration': 'duration',
+                    'DisableCooldown': 'disable duration',
+                    'DamageAmp': 'damage amplification',
+                    'Gold': 'gold'
+                };
+                
+                // Common calculation type descriptions
+                this.calculationDescriptions = {
+                    // Level-based scaling patterns
+                    'level_scaling': (startValue, endValue) => `${startValue}-${endValue} (scales with level)`,
+                    
+                    // Stat scaling patterns
+                    'stat_scaling': (coefficient, statType) => {
+                        const statNames = {
+                            2: 'AD', // Attack Damage
+                            5: 'AP', // Ability Power
+                            6: 'Health',
+                            7: 'Mana',
+                            8: 'Armor',
+                            9: 'Magic Resist',
+                            10: 'Attack Speed',
+                            11: 'Move Speed'
+                        };
+                        
+                        const statName = statNames[statType] || 'stat';
+                        const percentage = Math.round(coefficient * 100);
+                        return `${percentage}% ${statName}`;
+                    },
+                    
+                    // Conditional calculations
+                    'conditional': (condition, trueValue, falseValue) => {
+                        if (condition === 'IsRangedCastRequirement') {
+                            return `${trueValue} (ranged) / ${falseValue} (melee)`;
+                        }
+                        return `varies by condition`;
+                    },
+                    
+                    // Percentage display
+                    'percentage': (value) => `${Math.round(value * 100)}%`,
+                    
+                    // Flat value with context
+                    'flat_value': (value, context = '') => `${value}${context}`
+                };
+            }
+
+            processCalculations(description, augment) {
+                let processedDescription = description;
+                
+                // Handle static mappings first
+                for (const [placeholder, replacement] of Object.entries(this.staticMappings)) {
+                    processedDescription = processedDescription.replaceAll(placeholder, replacement);
+                }
+                
+                // Handle @calculation@ placeholders
+                processedDescription = this.processCalculationPlaceholders(processedDescription, augment);
+                
+                // Handle @spell.SpellName:Property@ placeholders
+                processedDescription = this.processSpellPlaceholders(processedDescription, augment);
+                
+                // Handle {{ Cherry_AugmentName_Summary }} placeholders
+                processedDescription = this.processSummaryPlaceholders(processedDescription, augment);
+                
+                return processedDescription;
+            }
+
+            processCalculationPlaceholders(description, augment) {
+                const calculations = augment.calculations || {};
+                
+                // Find all @word@ patterns that aren't already handled by dataValues
+                const calculationMatches = description.match(/@([^@*]+)@/g);
+                if (!calculationMatches) return description;
+                
+                let processedDescription = description;
+                
+                for (const match of calculationMatches) {
+                    const calcName = match.slice(1, -1); // Remove @ symbols
+                    
+                    // Skip if this is a dataValue (already handled elsewhere)
+                    if (augment.dataValues && augment.dataValues.hasOwnProperty(calcName)) {
+                        continue;
+                    }
+                    
+                    // Look for calculation
+                    if (calculations[calcName]) {
+                        const calculationResult = this.interpretCalculation(calculations[calcName]);
+                        processedDescription = processedDescription.replaceAll(match, calculationResult);
+                    } else {
+                        // Fallback for unknown calculations
+                        processedDescription = processedDescription.replaceAll(match, `[${calcName}]`);
+                    }
+                }
+                
+                return processedDescription;
+            }
+
+            processSpellPlaceholders(description, augment) {
+                const spellMatches = description.match(/@spell\.([^:]+):([^@*]+)(\*[^@]*)?@/g);
+                if (!spellMatches) return description;
+                
+                let processedDescription = description;
+                
+                for (const match of spellMatches) {
+                    // Parse the spell reference
+                    const content = match.slice(7, -1); // Remove @spell. and @
+                    const parts = content.split(':');
+                    const spellName = parts[0];
+                    const propertyWithMultiplier = parts[1];
+                    
+                    // Check for multiplier in the property
+                    let property = propertyWithMultiplier;
+                    let multiplier = '';
+                    if (propertyWithMultiplier.includes('*')) {
+                        const multiplierIndex = propertyWithMultiplier.indexOf('*');
+                        property = propertyWithMultiplier.substring(0, multiplierIndex);
+                        multiplier = propertyWithMultiplier.substring(multiplierIndex);
+                    }
+                    
+                    // Create a more descriptive replacement
+                    const propertyDescription = this.spellPropertyMappings[property] || property;
+                    let replacement = `[${propertyDescription}]`;
+                    
+                    // Handle multipliers for better display
+                    if (multiplier === '*100') {
+                        replacement = `[${propertyDescription}%]`;
+                    } else if (multiplier) {
+                        replacement = `[${propertyDescription} ${multiplier}]`;
+                    }
+                    
+                    processedDescription = processedDescription.replaceAll(match, replacement);
+                }
+                
+                return processedDescription;
+            }
+
+            processSummaryPlaceholders(description, augment) {
+                const summaryMatches = description.match(/\{\{\s*([^}]+)\s*\}\}/g);
+                if (!summaryMatches) return description;
+                
+                let processedDescription = description;
+                
+                for (const match of summaryMatches) {
+                    const content = match.slice(2, -2).trim(); // Remove {{ }}
+                    
+                    // Handle known summary types
+                    if (content.includes('Cherry_') && content.includes('_Summary')) {
+                        const augmentName = content.replace('Cherry_', '').replace('_Summary', '');
+                        processedDescription = processedDescription.replaceAll(match, `[${augmentName} effect]`);
+                    } else {
+                        // Keep as is for unknown patterns
+                        processedDescription = processedDescription.replaceAll(match, `[${content}]`);
+                    }
+                }
+                
+                return processedDescription;
+            }
+
+            interpretCalculation(calculation) {
+                if (!calculation || !calculation.mFormulaParts) {
+                    return '[calculation]';
+                }
+                
+                const parts = calculation.mFormulaParts;
+                const descriptions = [];
+                
+                for (const part of parts) {
+                    const partType = part.__type;
+                    
+                    switch (partType) {
+                        case 'ByCharLevelInterpolationCalculationPart':
+                            const startValue = Math.round(part.mStartValue || 0);
+                            const endValue = Math.round(part.mEndValue || 0);
+                            descriptions.push(this.calculationDescriptions.level_scaling(startValue, endValue));
+                            break;
+                            
+                        case 'StatByCoefficientCalculationPart':
+                            const coefficient = part.mCoefficient || 0;
+                            const statType = part.mStat || 0;
+                            descriptions.push(this.calculationDescriptions.stat_scaling(coefficient, statType));
+                            break;
+                            
+                        case 'EffectValueCalculationPart':
+                            const value = Math.round(part.mEffectValue || 0);
+                            descriptions.push(this.calculationDescriptions.flat_value(value));
+                            break;
+                            
+                        case 'GameCalculationConditional':
+                            // Handle conditional calculations
+                            const condition = part.mConditionalCalculationRequirements?.__type;
+                            const trueCalc = this.interpretCalculation(part.mConditionalGameCalculation);
+                            const falseCalc = this.interpretCalculation(part.mDefaultGameCalculation);
+                            descriptions.push(this.calculationDescriptions.conditional(condition, trueCalc, falseCalc));
+                            break;
+                            
+                        default:
+                            descriptions.push('[complex calculation]');
+                    }
+                }
+                
+                // Handle display formatting
+                if (calculation.mDisplayAsPercent) {
+                    return descriptions.map(desc => `${desc}%`).join(' + ');
+                }
+                
+                return descriptions.join(' + ') || '[calculation]';
+            }
+
+            processDataValue(varName, multiplier, dataValues) {
+                let varValue = dataValues[varName];
+                
+                if (varValue === undefined) {
+                    return `[${varName}]`;
+                }
+                
+                if (multiplier) {
+                    // Use safer evaluation than eval
+                    if (multiplier === '*100') {
+                        varValue = varValue * 100;
+                    } else if (multiplier === '*-100') {
+                        varValue = varValue * -100;
+                    } else {
+                        // For other multipliers, try to parse safely
+                        const multiplierNum = parseFloat(multiplier.replace('*', ''));
+                        if (!isNaN(multiplierNum)) {
+                            varValue = varValue * multiplierNum;
+                        }
+                    }
+                }
+                
+                // Format the value nicely
+                varValue = Math.fround(varValue);
+                varValue = Math.floor(varValue * 100) / 100;
+                
+                return varValue.toString();
+            }
+        }
+
+        // Initialize calculation engine
+        const calculationEngine = new CalculationEngine();
+
+        // ===== LOCAL STORAGE MODULE =====
+        function saveToLocalStorage(key, value) {
+            try {
+                localStorage.setItem(`augmentBuilder_${key}`, JSON.stringify(value));
+                return true;
+            } catch (e) {
+                console.error('Failed to save to localStorage:', e);
+                return false;
+            }
+        }
+
+        function loadFromLocalStorage(key, defaultValue) {
+            try {
+                const stored = localStorage.getItem(`augmentBuilder_${key}`);
+                return stored ? JSON.parse(stored) : defaultValue;
+            } catch (e) {
+                console.error('Failed to load from localStorage:', e);
+                return defaultValue;
+            }
+        }
+
+        function saveSettingWithIcon(settingKey, elementId) {
+            const element = document.getElementById(elementId);
+            const value = element.type === 'range' ? parseInt(element.value) : element.value;
+            
+            if (saveToLocalStorage(settingKey, value)) {
+                // Update the save icon to show saved state
+                const saveIcon = document.querySelector(`[data-save-for="${elementId}"]`);
+                if (saveIcon) {
+                    saveIcon.classList.add('saved');
+                    setTimeout(() => saveIcon.classList.remove('saved'), 2000);
+                }
+                
+                // Update settings and refresh display
+                settings[settingKey] = value;
+                mergeAugmentImages();
+            }
+        }
+
+        function createSaveIcon(elementId) {
+            const icon = document.createElement('span');
+            icon.className = 'save-icon';
+            icon.setAttribute('data-save-for', elementId);
+            icon.innerHTML = '💾';
+            icon.title = 'Save this setting';
+            return icon;
+        }
+
+        function loadSavedSettings() {
+            // Load all saved settings
+            const savedSettings = {
+                iconXOffset: loadFromLocalStorage('iconXOffset', 156),
+                iconYOffset: loadFromLocalStorage('iconYOffset', 40),
+                iconSize: loadFromLocalStorage('iconSize', 150),
+                titleYOffset: loadFromLocalStorage('titleYOffset', 324),
+                descriptionYOffset: loadFromLocalStorage('descriptionYOffset', 364),
+                titleLineHeight: loadFromLocalStorage('titleLineHeight', 26),
+                descriptionLineHeight: loadFromLocalStorage('descriptionLineHeight', 18),
+                titleFont: loadFromLocalStorage('titleFont', 'bold 24px LolBeautfortBold'),
+                descriptionFont: loadFromLocalStorage('descriptionFont', '14px LolBeautfort'),
+                customFrame: loadFromLocalStorage('customFrame', 'augmentcard_frame_prismatic'),
+                language: loadFromLocalStorage('language', 'en_us')
+            };
+
+            // Apply saved settings to elements and settings object
+            Object.keys(savedSettings).forEach(key => {
+                const value = savedSettings[key];
+                settings[key] = value;
+                
+                // Update form elements - handle font inputs specially
+                const element = document.getElementById(key === 'titleFont' ? 'titleFontInput' : 
+                                                      key === 'descriptionFont' ? 'descriptionFontInput' : key);
+                if (element) {
+                    element.value = value;
+                    
+                    // Update output elements for sliders
+                    const output = document.querySelector(`output[for="${key}"]`);
+                    if (output) {
+                        output.value = value;
+                    }
+                }
+            });
+
+            // Special handling for frame selection
+            if (savedSettings.customFrame) {
+                settings['selectedFrame'] = borderImages[savedSettings.customFrame];
+                settings['shinyFrame'] = savedSettings.customFrame.includes("sheenglow");
+            }
+        }
+
+        function resetAllSettings() {
+            if (confirm('Reset all saved settings to defaults? This cannot be undone.')) {
+                // Clear all localStorage items
+                const keys = ['iconXOffset', 'iconYOffset', 'iconSize', 'titleYOffset', 'descriptionYOffset', 
+                             'titleLineHeight', 'descriptionLineHeight', 'titleFont', 'descriptionFont', 
+                             'customFrame', 'language'];
+                
+                keys.forEach(key => {
+                    localStorage.removeItem(`augmentBuilder_${key}`);
+                });
+                
+                // Reload the page to reset everything
+                location.reload();
+            }
+        }
+
         // ===== CANVAS RENDERER MODULE =====
         function createHiPPICanvas(width, height) {
             const ratio = window.devicePixelRatio;
@@ -228,10 +694,11 @@
                     if (title) {
                         ctx.font = settings['titleFont'];
                         ctx.fillStyle = "white";
-                        const maxWidth = 230;
-                        const numberOfTitleLines = wrapText(ctx, title, 256, settings['titleYOffset'], maxWidth, settings['titleLineHeight'])
+                        const titleMaxWidth = settings['titleMaxWidth'] || 220;
+                        const numberOfTitleLines = wrapText(ctx, title, 256, settings['titleYOffset'], titleMaxWidth, settings['titleLineHeight'])
                         ctx.font = settings['descriptionFont'];
-                        wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), maxWidth, settings['descriptionLineHeight'])
+                        const descriptionMaxWidth = settings['descriptionMaxWidth'] || 220;
+                        wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight'])
                     }
 
                     return canvas.toDataURL(options.format, options.quality);
@@ -239,13 +706,29 @@
         });
 
         function wrapText(context, text, x, y, maxWidth, lineHeight = 16) {
-            const linebreakLines = text.split("\n");
+            // Preprocess text to convert HTML-style font tags to compact format
+            const preprocessedText = preprocessFontTags(text);
+            
+            const linebreakLines = preprocessedText.split("\n");
             const finalLines = [];
             linebreakLines.forEach((line) => finalLines.push(...getLines(context, line, maxWidth)))
 
             let inRulesSection = false;
             finalLines.forEach((line, index) => inRulesSection = writeCharacters(context, line, x, (y + (index * lineHeight)), inRulesSection));
             return finalLines.length;
+        }
+
+        function preprocessFontTags(text) {
+            // Convert <font color = '#hexcode'> to <fontcolor='#hexcode'> to prevent line splitting
+            let processedText = text;
+            
+            // Handle opening font tags with various spacing patterns
+            processedText = processedText.replace(/<font\s+color\s*=\s*['"]([^'"]+)['"]\s*>/gi, '<fontcolor=\'$1\'>');
+            
+            // Handle closing font tags
+            processedText = processedText.replace(/<\/font>/gi, '</fontcolor>');
+            
+            return processedText;
         }
 
         function getLines(ctx, text, maxWidth) {
@@ -271,22 +754,53 @@
         }
 
         const colorTable = {
-            scaleBonus: "#c9aa71",
+            // Damage types
             magicDamage: "#00B0F0",
-            physicalDamage: "orange",
-            recast: "rgb(255,143,97)",
-            rules: "rgb(255, 255, 255, 0.4)",
+            physicalDamage: "#FF8C00",
+            trueDamage: "#FFFFFF",
+            
+            // Scaling types
+            scaleBonus: "#c9aa71",
+            scaleHealth: "#60b087",
+            scaleAD: "#FF8C00",
+            scaleAP: "#00B0F0", 
+            scaleMana: "#0099CC",
+            scaleArmor: "#C89B3C",
+            scaleMR: "#9966CC",
+            scaleLethality: "#FF6B6B",
+            scaleLevel: "#CDBE91",
+            scaleAF: "#c9aa71", // Adaptive Force
+            
+            // Effects and utilities
             healing: "#60b087",
             shield: '#70b3b4',
             status: '#b29cc0',
-            spellName: '#dad2b5'
+            keywordMajor: '#F0E6D2',
+            keywordStealth: '#4B0082',
+            
+            // Speed and combat stats
+            speed: '#00FF7F',
+            attackSpeed: '#FF6347',
+            crit: '#FFD700',
+            lifeSteal: '#DC143C',
+            energy: '#4169E1',
+            
+            // UI elements
+            spellName: '#dad2b5',
+            abilityName: '#dad2b5',
+            recast: "rgb(255,143,97)",
+            rules: "rgb(255, 255, 255, 0.4)",
+            
+            // Resistances (fallback colors)
+            armor: "#C89B3C",
+            magicresistance: "#9966CC"
         }
 
         function writeCharacters(ctx, str, x, y, inRulesSection) {
             const strNoTags = str.replaceAll(/(<([^>]+)>)/gi, "");
             
-            // Letter spacing adjustment - increase this number to spread letters further apart
-            const letterSpacing = 0.5; // Try values like 0.5, 1, 1.5, 2, etc.
+            // Letter spacing adjustment - use dynamic value from settings
+            const letterSpacing = settings['letterSpacing'] || 0.5;
             
             // Manual centering adjustment - adjust these to fine-tune centering with letter spacing
             const titleCenterAdjustment = 2; // Adjust this for title centering (try -5, -10, +5, +10, etc.)
@@ -313,23 +827,62 @@
                 if (ch === "<") {
                     const endOfTag = str.indexOf(">", i);
                     if (endOfTag !== -1) {
-                        const colorName = str.substring(i + 1, endOfTag);
-                        const colorValue = colorTable[colorName];
-                        if (colorValue) {
-                            ctx.fillStyle = colorValue;
-                            if (colorName === "rules") {
-                                ctx.font = "italic";
-                                inRulesSection = true;
-                            }
-                        } else {
-                            if (inRulesSection) {
-                                ctx.fillStyle = colorTable["rules"];
-                                ctx.font = "italic";
-                            } else {
-                                ctx.fillStyle = "white";
-                                inRulesSection = false;
+                        const tagContent = str.substring(i + 1, endOfTag);
+                        
+                        // Check for compact font color format: <fontcolor='#hexcode'>
+                        if (tagContent.toLowerCase().startsWith('fontcolor=')) {
+                            // Extract hex color from fontcolor attribute
+                            const colorMatch = tagContent.match(/fontcolor\s*=\s*['"]([^'"]+)['"]/i);
+                            if (colorMatch && colorMatch[1]) {
+                                ctx.fillStyle = colorMatch[1];
                             }
                         }
+                        // Check for closing fontcolor tag
+                        else if (tagContent.toLowerCase() === '/fontcolor') {
+                            // Reset to default color
+                            if (inRulesSection) {
+                                ctx.fillStyle = colorTable["rules"];
+                            } else {
+                                ctx.fillStyle = "white";
+                            }
+                        }
+                        // Check for HTML-style font color format: <font color = '#hexcode'> (fallback for non-preprocessed text)
+                        else if (tagContent.toLowerCase().startsWith('font color')) {
+                            // Extract hex color from font color attribute
+                            const colorMatch = tagContent.match(/color\s*=\s*['"]([^'"]+)['"]/i);
+                            if (colorMatch && colorMatch[1]) {
+                                ctx.fillStyle = colorMatch[1];
+                            }
+                        }
+                        // Check for closing font tag (fallback)
+                        else if (tagContent.toLowerCase() === '/font') {
+                            // Reset to default color
+                            if (inRulesSection) {
+                                ctx.fillStyle = colorTable["rules"];
+                            } else {
+                                ctx.fillStyle = "white";
+                            }
+                        }
+                        // Handle existing color name format: <colorName>
+                        else {
+                            const colorValue = colorTable[tagContent];
+                            if (colorValue) {
+                                ctx.fillStyle = colorValue;
+                                if (tagContent === "rules") {
+                                    ctx.font = "italic";
+                                    inRulesSection = true;
+                                }
+                            } else {
+                                if (inRulesSection) {
+                                    ctx.fillStyle = colorTable["rules"];
+                                    ctx.font = "italic";
+                                } else {
+                                    ctx.fillStyle = "white";
+                                    inRulesSection = false;
+                                }
+                            }
+                        }
+                        
                         i += endOfTag - i;
                         continue;
                     }
@@ -382,34 +935,50 @@
 
         function populateDescriptionVariables(augment) {
             let description = augment['desc'];
-            const dataValues = augment['dataValues'];
+            const dataValues = augment['dataValues'] || {};
 
+            // First, handle complex calculations and special placeholders using the calculation engine
+            description = calculationEngine.processCalculations(description, augment);
+
+            // Then handle simple @DataValue@ and @DataValue*multiplier@ placeholders
             while (description.includes("@")) {
                 const startIndex = description.indexOf("@");
                 const endIndex = description.indexOf("@", startIndex + 1);
+                
+                if (endIndex === -1) break; // No closing @, break to avoid infinite loop
+                
                 const varName = description.substring(startIndex, endIndex + 1);
                 let multiplier = null;
                 let asteriskIndex = null;
 
+                // If it has a multiplier
                 if (varName.includes("*")) {
                     asteriskIndex = varName.indexOf("*");
                     multiplier = varName.substring(asteriskIndex, varName.length - 1);
                 }
 
                 const isolatedVarName = varName.substring(1, asteriskIndex ? asteriskIndex : (varName.length - 1));
-                let varValue = dataValues[isolatedVarName];
 
-                if (multiplier) {
-                    varValue = eval(varValue + multiplier);
+                // Check if this is a dataValue
+                if (dataValues.hasOwnProperty(isolatedVarName)) {
+                    const processedValue = calculationEngine.processDataValue(isolatedVarName, multiplier, dataValues);
+                    description = description.replaceAll(varName, processedValue);
+                } else {
+                    // If not found in dataValues, leave a descriptive placeholder
+                    description = description.replaceAll(varName, `[${isolatedVarName}]`);
                 }
-
-                varValue = Math.fround(varValue);
-                varValue = Math.floor(varValue * 100)/100;
-                description = description.replaceAll(varName, varValue);
             }
 
+            // Clean up the description
             let modifiedDescription = description.replaceAll("<br>", "\n");
-            return modifiedDescription.replaceAll(/((%i.+)% )/gi, "");
+            
+            // Remove %i:keyword% patterns (these are internal formatting codes)
+            modifiedDescription = modifiedDescription.replaceAll(/((%i:[^%]+)% )/gi, "");
+            
+            // Handle any remaining runtime placeholders (@f1@, @f2@, etc.)
+            modifiedDescription = modifiedDescription.replaceAll(/@f(\d+)@/g, '[runtime value]');
+            
+            return modifiedDescription;
         }
 
         // ===== DRAG AND DROP MODULE =====
@@ -477,6 +1046,497 @@
             mergeAugmentImages();
         }
 
+        // ===== TOAST NOTIFICATION SYSTEM =====
+        function showToast(message, isError = false) {
+            // Remove any existing toast
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // Create new toast
+            const toast = document.createElement('div');
+            toast.className = `toast ${isError ? 'error' : ''}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            // Show toast
+            setTimeout(() => toast.classList.add('show'), 100);
+            
+            // Hide and remove toast
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ===== SCREEN MANAGEMENT =====
+        function switchScreen(screenName) {
+            // Hide all screens
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('advancedScreen').style.display = 'none';
+            document.getElementById('colorsScreen').style.display = 'none';
+            
+            // Show selected screen
+            document.getElementById(screenName + 'Screen').style.display = 'block';
+            
+            // Update button states
+            document.querySelectorAll('.screen-btn').forEach(btn => {
+                btn.style.background = '#f8f9fa';
+                btn.style.color = '#333';
+            });
+            
+            document.getElementById(screenName + 'ScreenBtn').style.background = '#007bff';
+            document.getElementById(screenName + 'ScreenBtn').style.color = 'white';
+            
+            // Initialize color table if switching to colors screen
+            if (screenName === 'colors') {
+                populateColorTable();
+            }
+        }
+
+        // ===== COLOR TABLE MANAGEMENT =====
+        let currentColorTable = { ...colorTable }; // Copy of the original color table
+
+        function loadColorTable() {
+            try {
+                const stored = localStorage.getItem('augmentBuilder_colorTable');
+                if (stored) {
+                    currentColorTable = JSON.parse(stored);
+                    // Update the global colorTable reference
+                    Object.keys(colorTable).forEach(key => delete colorTable[key]);
+                    Object.assign(colorTable, currentColorTable);
+                }
+            } catch (e) {
+                console.error('Failed to load color table:', e);
+            }
+        }
+
+        function saveColorTable() {
+            try {
+                localStorage.setItem('augmentBuilder_colorTable', JSON.stringify(currentColorTable));
+                // Update the global colorTable reference
+                Object.keys(colorTable).forEach(key => delete colorTable[key]);
+                Object.assign(colorTable, currentColorTable);
+                showToast('Color table saved');
+                mergeAugmentImages(); // Refresh the canvas
+            } catch (e) {
+                console.error('Failed to save color table:', e);
+                showToast('Failed to save color table', true);
+            }
+        }
+
+        function resetColorTable() {
+            if (confirm('Reset color table to defaults? This cannot be undone.')) {
+                // Reset to original color table
+                currentColorTable = {
+                    // Damage types
+                    magicDamage: "#00B0F0",
+                    physicalDamage: "#FF8C00",
+                    trueDamage: "#FFFFFF",
+                    
+                    // Scaling types
+                    scaleBonus: "#c9aa71",
+                    scaleHealth: "#60b087",
+                    scaleAD: "#FF8C00",
+                    scaleAP: "#00B0F0", 
+                    scaleMana: "#0099CC",
+                    scaleArmor: "#C89B3C",
+                    scaleMR: "#9966CC",
+                    scaleLethality: "#FF6B6B",
+                    scaleLevel: "#CDBE91",
+                    scaleAF: "#c9aa71", // Adaptive Force
+                    
+                    // Effects and utilities
+                    healing: "#60b087",
+                    shield: '#70b3b4',
+                    status: '#b29cc0',
+                    keywordMajor: '#F0E6D2',
+                    keywordStealth: '#4B0082',
+                    
+                    // Speed and combat stats
+                    speed: '#00FF7F',
+                    attackSpeed: '#FF6347',
+                    crit: '#FFD700',
+                    lifeSteal: '#DC143C',
+                    energy: '#4169E1',
+                    
+                    // UI elements
+                    spellName: '#dad2b5',
+                    abilityName: '#dad2b5',
+                    recast: "rgb(255,143,97)",
+                    rules: "rgb(255, 255, 255, 0.4)",
+                    
+                    // Resistances (fallback colors)
+                    armor: "#C89B3C",
+                    magicresistance: "#9966CC"
+                };
+                
+                // Update global reference
+                Object.keys(colorTable).forEach(key => delete colorTable[key]);
+                Object.assign(colorTable, currentColorTable);
+                
+                populateColorTable();
+                mergeAugmentImages();
+                showToast('Color table reset to defaults');
+            }
+        }
+
+        function populateColorTable() {
+            const container = document.getElementById('colorTableEditor');
+            container.innerHTML = '';
+            
+            Object.keys(currentColorTable).forEach(colorName => {
+                addColorRowToDOM(colorName, currentColorTable[colorName]);
+            });
+        }
+
+        function addColorRow() {
+            const name = prompt('Enter color name:');
+            if (name && name.trim()) {
+                const cleanName = name.trim();
+                if (currentColorTable.hasOwnProperty(cleanName)) {
+                    alert('Color name already exists!');
+                    return;
+                }
+                currentColorTable[cleanName] = '#FFFFFF';
+                addColorRowToDOM(cleanName, '#FFFFFF');
+            }
+        }
+
+        function addColorRowToDOM(colorName, colorValue) {
+            const container = document.getElementById('colorTableEditor');
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; align-items: center; gap: 5px; margin-bottom: 5px; padding: 3px; border: 1px solid #ddd; border-radius: 3px;';
+            
+            row.innerHTML = `
+                <input type="text" value="${colorName}" onchange="updateColorName('${colorName}', this.value)" style="flex: 1; padding: 2px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px;">
+                <input type="color" value="${colorValue}" onchange="updateColorValue('${colorName}', this.value)" style="width: 30px; height: 20px; border: none; cursor: pointer;">
+                <button onclick="deleteColorRow('${colorName}')" style="background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px;">×</button>
+            `;
+            
+            container.appendChild(row);
+        }
+
+        function updateColorName(oldName, newName) {
+            if (newName && newName.trim() && newName !== oldName) {
+                const cleanNewName = newName.trim();
+                if (currentColorTable.hasOwnProperty(cleanNewName)) {
+                    alert('Color name already exists!');
+                    // Reset the input
+                    event.target.value = oldName;
+                    return;
+                }
+                currentColorTable[cleanNewName] = currentColorTable[oldName];
+                delete currentColorTable[oldName];
+                populateColorTable(); // Refresh the display
+            }
+        }
+
+        function updateColorValue(colorName, newValue) {
+            currentColorTable[colorName] = newValue;
+        }
+
+        function deleteColorRow(colorName) {
+            if (confirm(`Delete color "${colorName}"?`)) {
+                delete currentColorTable[colorName];
+                populateColorTable(); // Refresh the display
+            }
+        }
+
+        // ===== PRESET MANAGEMENT =====
+        // Import preset manager functionality
+        const DEFAULT_PRESET = {
+            name: "Default",
+            settings: {
+                titleFont: "24px LolBeautfortBold",
+                descriptionFont: "14px LolBeautfort",
+                iconYOffset: 40,
+                titleYOffset: 324,
+                descriptionYOffset: 364,
+                iconXOffset: 156,
+                iconSize: 150,
+                titleLineHeight: 26,
+                descriptionLineHeight: 18,
+                letterSpacing: 0.5,
+                titleMaxWidth: 220,
+                descriptionMaxWidth: 220
+            }
+        };
+
+        class PresetManager {
+            constructor() {
+                this.currentPresetName = 'Default';
+            }
+
+            getAllPresets() {
+                const customPresets = this.getCustomPresets();
+                return [DEFAULT_PRESET, ...customPresets];
+            }
+
+            getCustomPresets() {
+                try {
+                    const stored = localStorage.getItem('augmentBuilder_presets');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (e) {
+                    console.error('Failed to load presets:', e);
+                    return [];
+                }
+            }
+
+            saveCustomPresets(presets) {
+                try {
+                    localStorage.setItem('augmentBuilder_presets', JSON.stringify(presets));
+                    return true;
+                } catch (e) {
+                    console.error('Failed to save presets:', e);
+                    return false;
+                }
+            }
+
+            getCurrentPresetName() {
+                try {
+                    const stored = localStorage.getItem('augmentBuilder_currentPreset');
+                    return stored || 'Default';
+                } catch (e) {
+                    return 'Default';
+                }
+            }
+
+            setCurrentPresetName(name) {
+                try {
+                    localStorage.setItem('augmentBuilder_currentPreset', name);
+                    this.currentPresetName = name;
+                } catch (e) {
+                    console.error('Failed to save current preset:', e);
+                }
+            }
+
+            getPresetByName(name) {
+                const allPresets = this.getAllPresets();
+                return allPresets.find(preset => preset.name === name);
+            }
+
+            saveAsNewPreset(name, currentSettings) {
+                if (!name || name.trim() === '') {
+                    return { success: false, error: 'Preset name cannot be empty' };
+                }
+
+                if (name === 'Default') {
+                    return { success: false, error: 'Cannot use "Default" as preset name' };
+                }
+
+                const customPresets = this.getCustomPresets();
+                
+                if (customPresets.some(preset => preset.name === name)) {
+                    return { success: false, error: 'Preset name already exists' };
+                }
+
+                const newPreset = {
+                    name: name,
+                    settings: {
+                        titleFont: currentSettings.titleFont,
+                        descriptionFont: currentSettings.descriptionFont,
+                        iconYOffset: currentSettings.iconYOffset,
+                        titleYOffset: currentSettings.titleYOffset,
+                        descriptionYOffset: currentSettings.descriptionYOffset,
+                        iconXOffset: currentSettings.iconXOffset,
+                        iconSize: currentSettings.iconSize,
+                        titleLineHeight: currentSettings.titleLineHeight,
+                        descriptionLineHeight: currentSettings.descriptionLineHeight,
+                        letterSpacing: currentSettings.letterSpacing || 0.5,
+                        titleMaxWidth: currentSettings.titleMaxWidth || 220,
+                        descriptionMaxWidth: currentSettings.descriptionMaxWidth || 220
+                    }
+                };
+
+                customPresets.push(newPreset);
+                
+                if (this.saveCustomPresets(customPresets)) {
+                    this.setCurrentPresetName(name);
+                    return { success: true };
+                } else {
+                    return { success: false, error: 'Failed to save preset' };
+                }
+            }
+
+            updatePreset(name, currentSettings) {
+                if (name === 'Default') {
+                    return { success: false, error: 'Cannot update Default preset' };
+                }
+
+                const customPresets = this.getCustomPresets();
+                const presetIndex = customPresets.findIndex(preset => preset.name === name);
+                
+                if (presetIndex === -1) {
+                    return { success: false, error: 'Preset not found' };
+                }
+
+                customPresets[presetIndex].settings = {
+                    titleFont: currentSettings.titleFont,
+                    descriptionFont: currentSettings.descriptionFont,
+                    iconYOffset: currentSettings.iconYOffset,
+                    titleYOffset: currentSettings.titleYOffset,
+                    descriptionYOffset: currentSettings.descriptionYOffset,
+                    iconXOffset: currentSettings.iconXOffset,
+                    iconSize: currentSettings.iconSize,
+                    titleLineHeight: currentSettings.titleLineHeight,
+                    descriptionLineHeight: currentSettings.descriptionLineHeight,
+                    letterSpacing: currentSettings.letterSpacing || 0.5,
+                    titleMaxWidth: currentSettings.titleMaxWidth || 220,
+                    descriptionMaxWidth: currentSettings.descriptionMaxWidth || 220
+                };
+
+                if (this.saveCustomPresets(customPresets)) {
+                    return { success: true };
+                } else {
+                    return { success: false, error: 'Failed to update preset' };
+                }
+            }
+
+            deletePreset(name) {
+                if (name === 'Default') {
+                    return { success: false, error: 'Cannot delete Default preset' };
+                }
+
+                const customPresets = this.getCustomPresets();
+                const filteredPresets = customPresets.filter(preset => preset.name !== name);
+                
+                if (filteredPresets.length === customPresets.length) {
+                    return { success: false, error: 'Preset not found' };
+                }
+
+                if (this.saveCustomPresets(filteredPresets)) {
+                    if (this.getCurrentPresetName() === name) {
+                        this.setCurrentPresetName('Default');
+                    }
+                    return { success: true };
+                } else {
+                    return { success: false, error: 'Failed to delete preset' };
+                }
+            }
+
+            applyPreset(presetName, settingsObject) {
+                const preset = this.getPresetByName(presetName);
+                if (!preset) {
+                    console.error('Preset not found:', presetName);
+                    return false;
+                }
+
+                Object.keys(preset.settings).forEach(key => {
+                    settingsObject[key] = preset.settings[key];
+                });
+
+                this.updateUIFromSettings(preset.settings);
+                this.setCurrentPresetName(presetName);
+                
+                return true;
+            }
+
+            updateUIFromSettings(settings) {
+                const titleFontInput = document.getElementById('titleFontInput');
+                if (titleFontInput) titleFontInput.value = settings.titleFont;
+
+                const descriptionFontInput = document.getElementById('descriptionFontInput');
+                if (descriptionFontInput) descriptionFontInput.value = settings.descriptionFont;
+
+                const sliderMappings = {
+                    iconYOffset: 'iconYOffset',
+                    titleYOffset: 'titleYOffset',
+                    descriptionYOffset: 'descriptionYOffset',
+                    iconXOffset: 'iconXOffset',
+                    iconSize: 'iconSize',
+                    titleLineHeight: 'titleLineHeight',
+                    descriptionLineHeight: 'descriptionLineHeight'
+                };
+
+                Object.keys(sliderMappings).forEach(settingKey => {
+                    const slider = document.getElementById(sliderMappings[settingKey]);
+                    if (slider) {
+                        slider.value = settings[settingKey];
+                        
+                        const output = document.querySelector(`output[for="${sliderMappings[settingKey]}"]`);
+                        if (output) {
+                            output.value = settings[settingKey];
+                        }
+                    }
+                });
+            }
+        }
+
+        const presetManager = new PresetManager();
+
+        // Preset UI functions
+        function populatePresetDropdown() {
+            const presetSelect = document.getElementById('presetSelect');
+            const allPresets = presetManager.getAllPresets();
+            
+            presetSelect.innerHTML = '';
+            allPresets.forEach(preset => {
+                const option = document.createElement('option');
+                option.value = preset.name;
+                option.textContent = preset.name;
+                presetSelect.appendChild(option);
+            });
+            
+            const currentPreset = presetManager.getCurrentPresetName();
+            presetSelect.value = currentPreset;
+        }
+
+        function selectPreset(presetName) {
+            if (presetManager.applyPreset(presetName, settings)) {
+                mergeAugmentImages();
+            }
+        }
+
+        function saveNewPreset() {
+            const name = prompt('Enter preset name:');
+            if (name) {
+                const result = presetManager.saveAsNewPreset(name, settings);
+                if (result.success) {
+                    populatePresetDropdown();
+                    document.getElementById('presetSelect').value = name;
+                    showToast('Preset saved');
+                } else {
+                    showToast('Error: ' + result.error, true);
+                }
+            }
+        }
+
+        function updateCurrentPreset() {
+            const currentPreset = presetManager.getCurrentPresetName();
+            if (currentPreset === 'Default') {
+                showToast('Cannot update Default preset', true);
+                return;
+            }
+            
+            const result = presetManager.updatePreset(currentPreset, settings);
+            if (result.success) {
+                showToast('Preset updated');
+            } else {
+                showToast('Error: ' + result.error, true);
+            }
+        }
+
+        function deleteCurrentPreset() {
+            const currentPreset = presetManager.getCurrentPresetName();
+            if (currentPreset === 'Default') {
+                showToast('Cannot delete Default preset', true);
+                return;
+            }
+            
+            if (confirm(`Delete preset "${currentPreset}"? This cannot be undone.`)) {
+                const result = presetManager.deletePreset(currentPreset);
+                if (result.success) {
+                    populatePresetDropdown();
+                    selectPreset('Default');
+                    showToast('Preset deleted');
+                } else {
+                    showToast('Error: ' + result.error, true);
+                }
+            }
+        }
+
         // ===== MAIN APPLICATION =====
         const settings = {
             selectedAugment: null,
@@ -485,13 +1545,13 @@
             augmentTitle: "",
             augmentDescription: "",
             iconXOffset: 156,
-            iconYOffset: 30,
+            iconYOffset: 40,
             iconSize: 150,
             titleFont: "bold 24px LolBeautfortBold",
             descriptionFont: "14px LolBeautfort",
             selectedChampion: null,
-            titleYOffset: 300,
-            descriptionYOffset: 360,
+            titleYOffset: 324,
+            descriptionYOffset: 364,
             titleLineHeight: 26,
             descriptionLineHeight: 18,
             language: 'en_us',
@@ -694,8 +1754,7 @@
 
         async function getArenaJson() {
             await getAugmentData();
-            setDefaultTitleFont();
-            setDefaultDescriptionFont();
+            // Don't set default fonts here - they'll be loaded from localStorage in init()
             setSelectedAugment(1);
             displayAugments(arenaJsonData);
             filterAugments();
@@ -710,10 +1769,28 @@
         async function init() {
             initializeDragDrop();
             
+            // Initialize color table
+            loadColorTable();
+            
+            // Initialize preset system
+            populatePresetDropdown();
+            
+            // Load current preset instead of individual settings
+            const currentPresetName = presetManager.getCurrentPresetName();
+            presetManager.applyPreset(currentPresetName, settings);
+            
             let p1 = getArenaJson();
             let p2 = getChampionJson();
 
-            Promise.all([p1, p2]).then(mergeAugmentImages);
+            Promise.all([p1, p2]).then(() => {
+                // Apply saved language setting after data is loaded
+                const savedLanguage = loadFromLocalStorage('language', 'en_us');
+                if (savedLanguage !== 'en_us') {
+                    setLanguage(savedLanguage);
+                } else {
+                    mergeAugmentImages();
+                }
+            });
         }
 
         init();

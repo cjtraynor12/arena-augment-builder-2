@@ -1,5 +1,7 @@
 // Data management and API functionality
 
+import { CalculationEngine } from './calculation-engine.js';
+
 const arenaJsonDataUrl = "https://raw.communitydragon.org/pbe/cdragon/arena/";
 const championJsonDataUrl = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json";
 const communityDragonBaseUrl = "https://raw.communitydragon.org/pbe/game/";
@@ -7,6 +9,9 @@ const baseSquarePortraitPath = "https://raw.communitydragon.org/latest/plugins/r
 
 export let arenaJsonData = null;
 export let championJsonData = null;
+
+// Initialize calculation engine
+const calculationEngine = new CalculationEngine();
 
 function compareNames(a, b) {
     if (a.name < b.name){
@@ -46,11 +51,18 @@ export async function getChampionData() {
 
 export function populateDescriptionVariables(augment) {
     let description = augment['desc'];
-    const dataValues = augment['dataValues'];
+    const dataValues = augment['dataValues'] || {};
 
+    // First, handle complex calculations and special placeholders using the calculation engine
+    description = calculationEngine.processCalculations(description, augment);
+
+    // Then handle simple @DataValue@ and @DataValue*multiplier@ placeholders
     while (description.includes("@")) {
         const startIndex = description.indexOf("@");
         const endIndex = description.indexOf("@", startIndex + 1);
+        
+        if (endIndex === -1) break; // No closing @, break to avoid infinite loop
+        
         const varName = description.substring(startIndex, endIndex + 1);
         let multiplier = null;
         let asteriskIndex = null;
@@ -63,21 +75,26 @@ export function populateDescriptionVariables(augment) {
 
         const isolatedVarName = varName.substring(1, asteriskIndex ? asteriskIndex : (varName.length - 1));
 
-        let varValue = dataValues[isolatedVarName];
-
-        if (multiplier) {
-            // Use something safer than eval later
-            varValue = eval(varValue + multiplier);
+        // Check if this is a dataValue
+        if (dataValues.hasOwnProperty(isolatedVarName)) {
+            const processedValue = calculationEngine.processDataValue(isolatedVarName, multiplier, dataValues);
+            description = description.replaceAll(varName, processedValue);
+        } else {
+            // If not found in dataValues, leave a descriptive placeholder
+            description = description.replaceAll(varName, `[${isolatedVarName}]`);
         }
-
-        varValue = Math.fround(varValue);
-        varValue = Math.floor(varValue * 100)/100;
-
-        description = description.replaceAll(varName, varValue);
     }
 
+    // Clean up the description
     let modifiedDescription = description.replaceAll("<br>", "\n");
-    return modifiedDescription.replaceAll(/((%i.+)% )/gi, "");
+    
+    // Remove %i:keyword% patterns (these are internal formatting codes)
+    modifiedDescription = modifiedDescription.replaceAll(/((%i:[^%]+)% )/gi, "");
+    
+    // Handle any remaining runtime placeholders (@f1@, @f2@, etc.)
+    modifiedDescription = modifiedDescription.replaceAll(/@f(\d+)@/g, '[runtime value]');
+    
+    return modifiedDescription;
 }
 
 export function getAugmentById(id) {
