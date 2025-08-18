@@ -7,6 +7,11 @@ import {
     populateDescriptionVariables, 
     getAugmentById, 
     getChampionById,
+    getItemsData,
+    getItemById,
+    getItemModifierById,
+    getItemIconUrl,
+    getItemModifierUrl,
     getCommunityDragonBaseUrl,
     getBaseSquarePortraitPath,
     arenaJsonData,
@@ -15,10 +20,16 @@ import {
 import { 
     updateAugmentSearch, 
     updateChampionSearch, 
+    updateItemSearch,
     displayAugments, 
     displayChampions, 
+    displayItems,
     filterAugments, 
     filterChampions,
+    filterItems,
+    switchIconTab,
+    populateModifierDropdown,
+    updateModifierVariable,
     setDefaultTitleFont,
     setDefaultDescriptionFont,
     updateCanvasVariable,
@@ -38,6 +49,8 @@ window.settings = {
     titleFont: "bold 24px LolBeautfortBold",
     descriptionFont: "14px LolBeautfort",
     selectedChampion: null,
+    selectedItem: null,
+    selectedModifier: 0,
     titleYOffset: 324,
     descriptionYOffset: 364,
     titleLineHeight: 26,
@@ -62,10 +75,14 @@ const augmentFrameBaseUrl = getCommunityDragonBaseUrl() + "assets/ux/cherry/augm
 // Make functions globally available for HTML onclick handlers
 window.updateAugmentSearch = updateAugmentSearch;
 window.updateChampionSearch = updateChampionSearch;
+window.updateItemSearch = updateItemSearch;
+window.switchIconTab = switchIconTab;
+window.updateModifierVariable = updateModifierVariable;
 window.updateCanvasVariable = updateCanvasVariable;
 window.updateFrameVariable = updateFrameVariable;
 window.setSelectedAugment = setSelectedAugment;
 window.setSelectedChampion = setSelectedChampion;
+window.setSelectedItem = setSelectedItem;
 window.setLanguage = setLanguage;
 window.mergeAugmentImages = mergeAugmentImages;
 
@@ -101,8 +118,18 @@ function setSelectedAugment(id) {
 function setSelectedChampion(id) {
     window.settings['selectedChampion'] = getChampionById(id);
     window.settings['selectedAugment'] = null;
+    window.settings['selectedItem'] = null;
     clearCustomImage();
     console.log(window.settings['selectedChampion']['name']);
+    mergeAugmentImages();
+}
+
+function setSelectedItem(id) {
+    window.settings['selectedItem'] = getItemById(id);
+    window.settings['selectedAugment'] = null;
+    window.settings['selectedChampion'] = null;
+    clearCustomImage();
+    console.log(window.settings['selectedItem']['name']);
     mergeAugmentImages();
 }
 
@@ -125,6 +152,11 @@ function mergeAugmentImages() {
     else if (window.settings['selectedChampion'] !== null) {
         iconImage = getBaseSquarePortraitPath() + window.settings['selectedChampion']['id'] + ".png";
         iconSize = 150;
+    }
+    // For items
+    else if (window.settings['selectedItem'] !== null) {
+        iconImage = getItemIconUrl(window.settings['selectedItem']['filename']);
+        iconSize = 150;
     } else {
         return;
     }
@@ -138,6 +170,16 @@ function mergeAugmentImages() {
         augmentFrameBaseUrl + window.settings['selectedFrame'],
         iconImage
     ];
+
+    // Add modifier overlay if selected
+    if (window.settings['selectedModifier'] && window.settings['selectedModifier'] !== 0) {
+        const modifier = getItemModifierById(window.settings['selectedModifier']);
+        if (modifier && modifier.filename) {
+            const modifierUrl = getItemModifierUrl(modifier.filename);
+            images.push(modifierUrl);
+            imagePositionOffsets[3] = [modifiedXOffset, modifiedYOffset]; // Same position as icon
+        }
+    }
 
     const options = {};
 
@@ -176,14 +218,24 @@ async function getChampionJson() {
     filterChampions();
 }
 
+async function getItemsJson() {
+    const itemsData = getItemsData();
+    displayItems(itemsData);
+    filterItems();
+}
+
 async function init() {
     // Initialize drag and drop functionality
     initializeDragDrop();
     
+    // Initialize items and modifiers
+    populateModifierDropdown();
+    
     let p1 = getArenaJson();
     let p2 = getChampionJson();
+    let p3 = getItemsJson();
 
-    Promise.all([p1, p2]).then(mergeAugmentImages);
+    Promise.all([p1, p2, p3]).then(mergeAugmentImages);
 }
 
 // Initialize the application

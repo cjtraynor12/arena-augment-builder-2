@@ -52,19 +52,57 @@ body {
     height: 100%;
 }
 
+/* Tab Navigation */
+.tab-navigation {
+    display: flex;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #444;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 15px;
+    background-color: #555;
+    color: #ccc;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    background-color: #666;
+    color: white;
+}
+
+.tab-btn.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.tab-btn:first-child {
+    border-right: 1px solid #333;
+}
+
 /* Search Sections */
 .search-container {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 10px;
     margin-bottom: 15px;
+}
+
+#championSearchInput, #arenaItemSearchInput, #itemSearchInput {
+    max-width: 160px;
 }
 
 .search-input {
     height: 35px;
     width: 100%;
-    max-width: 250px;
     border-radius: 10px;
     font-size: 16px;
     padding: 0 10px;
