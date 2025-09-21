@@ -196,6 +196,7 @@
                         <button onclick="switchScreen('main')" id="mainScreenBtn" class="screen-btn active" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #007bff; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;">Main</button>
                         <button onclick="switchScreen('advanced')" id="advancedScreenBtn" class="screen-btn" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #f8f9fa; color: #333; border-radius: 4px; cursor: pointer; font-size: 12px;">Advanced</button>
                         <button onclick="switchScreen('colors')" id="colorsScreenBtn" class="screen-btn" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #f8f9fa; color: #333; border-radius: 4px; cursor: pointer; font-size: 12px;">Colors</button>
+                        <button onclick="switchScreen('icons')" id="iconsScreenBtn" class="screen-btn" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #f8f9fa; color: #333; border-radius: 4px; cursor: pointer; font-size: 12px;">Icons</button>
                     </div>
 
                     <!-- Main Screen -->
@@ -252,6 +253,16 @@
                         </div>
                         <div id="colorTableEditor" style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; border-radius: 4px;">
                             <!-- Color rows will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Icons Screen -->
+                    <div id="iconsScreen" class="settings-screen" style="display: none;">
+                        <div style="margin-bottom: 10px; text-align: center; color: #ccc; font-size: 12px;">
+                            Click an icon to insert it at your cursor position in the description
+                        </div>
+                        <div id="iconGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px; max-height: 200px; overflow-y: auto; border: 1px solid #555; padding: 8px; border-radius: 4px; background: #2a2a2a;">
+                            <!-- Icon buttons will be populated here -->
                         </div>
                     </div>
                 </div>
@@ -745,17 +756,22 @@
                         ctx.font = settings['titleFont'];
                         ctx.fillStyle = "white";
                         const titleMaxWidth = settings['titleMaxWidth'] || 220;
-                        const numberOfTitleLines = wrapText(ctx, title, 256, settings['titleYOffset'], titleMaxWidth, settings['titleLineHeight'])
-                        ctx.font = settings['descriptionFont'];
-                        const descriptionMaxWidth = settings['descriptionMaxWidth'] || 220;
-                        wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight'])
+                        return wrapText(ctx, title, 256, settings['titleYOffset'], titleMaxWidth, settings['titleLineHeight'])
+                            .then(numberOfTitleLines => {
+                                ctx.font = settings['descriptionFont'];
+                                const descriptionMaxWidth = settings['descriptionMaxWidth'] || 220;
+                                return wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight']);
+                            })
+                            .then(() => {
+                                return canvas.toDataURL(options.format, options.quality);
+                            });
                     }
 
                     return canvas.toDataURL(options.format, options.quality);
                 }));
         });
 
-        function wrapText(context, text, x, y, maxWidth, lineHeight = 16) {
+        async function wrapText(context, text, x, y, maxWidth, lineHeight = 16) {
             // Preprocess text to convert HTML-style font tags to compact format
             const preprocessedText = preprocessFontTags(text);
             
@@ -764,7 +780,10 @@
             linebreakLines.forEach((line) => finalLines.push(...getLines(context, line, maxWidth)))
 
             let inRulesSection = false;
-            finalLines.forEach((line, index) => inRulesSection = writeCharacters(context, line, x, (y + (index * lineHeight)), inRulesSection));
+            for (let index = 0; index < finalLines.length; index++) {
+                const line = finalLines[index];
+                inRulesSection = await writeCharacters(context, line, x, (y + (index * lineHeight)), inRulesSection);
+            }
             return finalLines.length;
         }
 
@@ -782,30 +801,51 @@
         }
 
         function getLines(ctx, text, maxWidth) {
+            console.log('getLines input text:', text); // Debug log
+            
             let words = text.split(" ");
             let lines = [];
             let currentLine = words[0];
 
             for (let i = 1; i < words.length; i++) {
                 let word = words[i];
-                const wordNoTags = word.replaceAll(/(<([^>]+)>)/gi, "");
+                
+                // Handle image tags specially - they should be treated as having a width
+                let wordWidth = 0;
+                let currentLineWidth = 0;
+                
+                // Calculate width for current line (excluding tags but accounting for images)
                 const currentLineNoTags = currentLine.replaceAll(/(<([^>]+)>)/gi, "");
+                const imgMatches = currentLine.match(/<img[^>]*>/gi) || [];
+                const fontSize = parseInt(ctx.font.match(/\d+/));
+                const imageSize = Math.max(12, fontSize - 2);
+                currentLineWidth = ctx.measureText(currentLineNoTags).width + (imgMatches.length * imageSize);
+                
+                // Calculate width for the word being added
+                const wordNoTags = word.replaceAll(/(<([^>]+)>)/gi, "");
+                const wordImgMatches = word.match(/<img[^>]*>/gi) || [];
+                wordWidth = ctx.measureText(wordNoTags).width + (wordImgMatches.length * imageSize);
 
-                let width = ctx.measureText(currentLineNoTags + " " + wordNoTags).width;
-                if (width < maxWidth) {
+                let totalWidth = currentLineWidth + ctx.measureText(" ").width + wordWidth;
+                
+                if (totalWidth < maxWidth) {
                     currentLine += " " + word;
                 } else {
+                    console.log('Line break - pushing line:', currentLine); // Debug log
                     lines.push(currentLine);
                     currentLine = word;
                 }
             }
+            console.log('Final line:', currentLine); // Debug log
             lines.push(currentLine);
+            
+            console.log('getLines output lines:', lines); // Debug log
             return lines;
         }
 
         const colorTable = {
             // Damage types
-            magicDamage: "#00B0F0",
+            magicDamage: "#30bdd0",
             physicalDamage: "#FF8C00",
             trueDamage: "#FFFFFF",
             
@@ -846,102 +886,193 @@
             magicresistance: "#9966CC"
         }
 
-        function writeCharacters(ctx, str, x, y, inRulesSection) {
-            const strNoTags = str.replaceAll(/(<([^>]+)>)/gi, "");
-            
-            // Letter spacing adjustment - use dynamic value from settings
-            const letterSpacing = settings['letterSpacing'] || 0.5;
-            
-            // Manual centering adjustment - adjust these to fine-tune centering with letter spacing
-            const titleCenterAdjustment = 2; // Adjust this for title centering (try -5, -10, +5, +10, etc.)
-            const descriptionCenterAdjustment = 2; // Adjust this for description centering
-            
-            // Calculate the total width including letter spacing
-            const totalLetterSpacing = (strNoTags.length - 1) * letterSpacing;
-            const lineWidth = ctx.measureText(strNoTags).width + totalLetterSpacing;
-            let xCenterAdjustment = lineWidth / 2;
-            
-            // Apply manual adjustments based on font size (rough detection)
-            const fontSize = parseInt(ctx.font.match(/\d+/));
-            if (fontSize > 20) {
-                // This is likely a title
-                xCenterAdjustment += titleCenterAdjustment;
-            } else {
-                // This is likely description text
-                xCenterAdjustment += descriptionCenterAdjustment;
-            }
+        // Image cache for inline images
+        const imageCache = new Map();
 
-            for(let i = 0; i <= str.length; ++i) {
-                let ch = str.charAt(i);
-
-                if (ch === "<") {
-                    const endOfTag = str.indexOf(">", i);
-                    if (endOfTag !== -1) {
-                        const tagContent = str.substring(i + 1, endOfTag);
-                        
-                        // Check for compact font color format: <fontcolor='#hexcode'>
-                        if (tagContent.toLowerCase().startsWith('fontcolor=')) {
-                            // Extract hex color from fontcolor attribute
-                            const colorMatch = tagContent.match(/fontcolor\s*=\s*['"]([^'"]+)['"]/i);
-                            if (colorMatch && colorMatch[1]) {
-                                ctx.fillStyle = colorMatch[1];
-                            }
-                        }
-                        // Check for closing fontcolor tag
-                        else if (tagContent.toLowerCase() === '/fontcolor') {
-                            // Reset to default color
-                            if (inRulesSection) {
-                                ctx.fillStyle = colorTable["rules"];
-                            } else {
-                                ctx.fillStyle = "white";
-                            }
-                        }
-                        // Check for HTML-style font color format: <font color = '#hexcode'> (fallback for non-preprocessed text)
-                        else if (tagContent.toLowerCase().startsWith('font color')) {
-                            // Extract hex color from font color attribute
-                            const colorMatch = tagContent.match(/color\s*=\s*['"]([^'"]+)['"]/i);
-                            if (colorMatch && colorMatch[1]) {
-                                ctx.fillStyle = colorMatch[1];
-                            }
-                        }
-                        // Check for closing font tag (fallback)
-                        else if (tagContent.toLowerCase() === '/font') {
-                            // Reset to default color
-                            if (inRulesSection) {
-                                ctx.fillStyle = colorTable["rules"];
-                            } else {
-                                ctx.fillStyle = "white";
-                            }
-                        }
-                        // Handle existing color name format: <colorName>
-                        else {
-                            const colorValue = colorTable[tagContent];
-                            if (colorValue) {
-                                ctx.fillStyle = colorValue;
-                                if (tagContent === "rules") {
-                                    ctx.font = "italic";
-                                    inRulesSection = true;
-                                }
-                            } else {
-                                if (inRulesSection) {
-                                    ctx.fillStyle = colorTable["rules"];
-                                    ctx.font = "italic";
-                                } else {
-                                    ctx.fillStyle = "white";
-                                    inRulesSection = false;
-                                }
-                            }
-                        }
-                        
-                        i += endOfTag - i;
-                        continue;
+        // Preload all stat icons for better performance
+        function preloadStatIcons() {
+            console.log('Preloading stat icons...');
+            let loadedCount = 0;
+            const totalIcons = Object.keys(imageKeywordMap).length;
+            
+            Object.entries(imageKeywordMap).forEach(([keyword, filename]) => {
+                const url = getStatIconUrl(keyword);
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    imageCache.set(url, img);
+                    loadedCount++;
+                    if (loadedCount === totalIcons) {
+                        console.log(`All ${totalIcons} stat icons preloaded successfully`);
                     }
+                };
+                img.onerror = () => {
+                    console.warn(`Failed to preload stat icon: ${keyword} (${url})`);
+                    loadedCount++;
+                };
+                img.src = url;
+            });
+        }
+
+        function writeCharacters(ctx, str, x, y, inRulesSection) {
+            return new Promise((resolve) => {
+                const strNoTags = str.replaceAll(/(<([^>]+)>)/gi, "");
+                
+                // Letter spacing adjustment - use dynamic value from settings
+                const letterSpacing = settings['letterSpacing'] || 0.5;
+                
+                // Manual centering adjustment - adjust these to fine-tune centering with letter spacing
+                const titleCenterAdjustment = 2; // Adjust this for title centering (try -5, -10, +5, +10, etc.)
+                const descriptionCenterAdjustment = 2; // Adjust this for description centering
+                
+                // Calculate the total width including letter spacing and images
+                let totalWidth = ctx.measureText(strNoTags).width + (strNoTags.length - 1) * letterSpacing;
+                
+                // Add width for inline images
+                const imgMatches = str.match(/<img[^>]*>/gi) || [];
+                const fontSize = parseInt(ctx.font.match(/\d+/));
+                const imageSize = Math.max(12, fontSize - 2); // Scale images to font size
+                totalWidth += imgMatches.length * (imageSize + letterSpacing);
+                
+                let xCenterAdjustment = totalWidth / 2;
+                
+                // Apply manual adjustments based on font size (rough detection)
+                if (fontSize > 20) {
+                    // This is likely a title
+                    xCenterAdjustment += titleCenterAdjustment;
+                } else {
+                    // This is likely description text
+                    xCenterAdjustment += descriptionCenterAdjustment;
                 }
 
-                ctx.fillText(ch, x - xCenterAdjustment, y);
-                x += Math.round(ctx.measureText(ch).width) + letterSpacing;
-            }
-            return inRulesSection;
+                let currentX = x - xCenterAdjustment;
+                let pendingImages = [];
+
+                for(let i = 0; i <= str.length; ++i) {
+                    let ch = str.charAt(i);
+
+                    if (ch === "<") {
+                        const endOfTag = str.indexOf(">", i);
+                        if (endOfTag !== -1) {
+                            const tagContent = str.substring(i + 1, endOfTag);
+                            
+                            console.log('Processing tag:', tagContent); // Debug log
+                            
+                            // Handle custom inline image tags - check for imgKeyword format
+                            if (tagContent.toLowerCase().startsWith('img')) {
+                                const keyword = tagContent.substring(3); // Remove 'img' prefix
+                                const imageUrl = getStatIconUrl(keyword);
+                                
+                                if (imageKeywordMap[keyword]) {
+                                    const imageSize = Math.max(12, fontSize - 2);
+                                    
+                                    console.log('Processing custom image tag:', tagContent, 'keyword:', keyword, 'url:', imageUrl); // Debug log
+                                    
+                                    // Check cache first
+                                    if (imageCache.has(imageUrl)) {
+                                        const cachedImg = imageCache.get(imageUrl);
+                                        if (cachedImg.complete) {
+                                            // Draw cached image
+                                            const imageY = y - imageSize + 2; // Align with text baseline
+                                            ctx.drawImage(cachedImg, currentX, imageY, imageSize, imageSize);
+                                            currentX += imageSize + letterSpacing;
+                                            console.log('Drew cached image at', currentX, imageY); // Debug log
+                                        }
+                                    } else {
+                                        // Load new image
+                                        const img = new Image();
+                                        img.crossOrigin = 'anonymous';
+                                        img.onload = () => {
+                                            imageCache.set(imageUrl, img);
+                                            console.log('Image loaded, redrawing canvas'); // Debug log
+                                            // Redraw the entire canvas when image loads
+                                            setTimeout(() => {
+                                                mergeAugmentImages();
+                                            }, 10);
+                                        };
+                                        img.onerror = () => {
+                                            console.warn('Failed to load inline image:', imageUrl);
+                                        };
+                                        img.src = imageUrl;
+                                        
+                                        // Reserve space for the image
+                                        currentX += imageSize + letterSpacing;
+                                        console.log('Reserved space for loading image'); // Debug log
+                                    }
+                                } else {
+                                    console.warn('Unknown image keyword:', keyword); // Debug log
+                                }
+                                
+                                i = endOfTag; // Move past the closing >
+                                continue;
+                            }
+                            // Check for compact font color format: <fontcolor='#hexcode'>
+                            else if (tagContent.toLowerCase().startsWith('fontcolor=')) {
+                                // Extract hex color from fontcolor attribute
+                                const colorMatch = tagContent.match(/fontcolor\s*=\s*['"]([^'"]+)['"]/i);
+                                if (colorMatch && colorMatch[1]) {
+                                    ctx.fillStyle = colorMatch[1];
+                                }
+                            }
+                            // Check for closing fontcolor tag
+                            else if (tagContent.toLowerCase() === '/fontcolor') {
+                                // Reset to default color
+                                if (inRulesSection) {
+                                    ctx.fillStyle = colorTable["rules"];
+                                } else {
+                                    ctx.fillStyle = "white";
+                                }
+                            }
+                            // Check for HTML-style font color format: <font color = '#hexcode'> (fallback for non-preprocessed text)
+                            else if (tagContent.toLowerCase().startsWith('font color')) {
+                                // Extract hex color from font color attribute
+                                const colorMatch = tagContent.match(/color\s*=\s*['"]([^'"]+)['"]/i);
+                                if (colorMatch && colorMatch[1]) {
+                                    ctx.fillStyle = colorMatch[1];
+                                }
+                            }
+                            // Check for closing font tag (fallback)
+                            else if (tagContent.toLowerCase() === '/font') {
+                                // Reset to default color
+                                if (inRulesSection) {
+                                    ctx.fillStyle = colorTable["rules"];
+                                } else {
+                                    ctx.fillStyle = "white";
+                                }
+                            }
+                            // Handle existing color name format: <colorName>
+                            else {
+                                const colorValue = colorTable[tagContent];
+                                if (colorValue) {
+                                    ctx.fillStyle = colorValue;
+                                    if (tagContent === "rules") {
+                                        ctx.font = "italic";
+                                        inRulesSection = true;
+                                    }
+                                } else {
+                                    if (inRulesSection) {
+                                        ctx.fillStyle = colorTable["rules"];
+                                        ctx.font = "italic";
+                                    } else {
+                                        ctx.fillStyle = "white";
+                                        inRulesSection = false;
+                                    }
+                                }
+                            }
+                            
+                            i += endOfTag - i;
+                            continue;
+                        }
+                    }
+
+                    if (ch && ch !== '') {
+                        ctx.fillText(ch, currentX, y);
+                        currentX += Math.round(ctx.measureText(ch).width) + letterSpacing;
+                    }
+                }
+                
+                resolve(inRulesSection);
+            });
         }
 
         // ===== DATA MANAGER MODULE =====
@@ -983,11 +1114,65 @@
             return championJsonData;
         }
 
+        // Base URL for stat icons to avoid repetition
+        const STAT_ICONS_BASE_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/ux/fonts/texticons/lol/statsicon/';
+
+        // Image keyword mapping for inline images - complete list of available stat icons
+        const imageKeywordMap = {
+            'onhit': 'onhit.png',
+            'scaleAD': 'scalead.png',
+            'scaleAdaptiveForce': 'scaleadaptiveforce.png',
+            'scaleAH': 'scaleah.png',
+            'scaleAP': 'scaleap.png',
+            'scaleAPen': 'scaleapen.png',
+            'scaleArmor': 'scalearmor.png',
+            'scaleAS': 'scaleas.png',
+            'scaleCooldown': 'scalecooldown.png',
+            'scaleCrit': 'scalecrit.png',
+            'scaleCritMult': 'scalecritmult.png',
+            'scaleDA': 'scaleda.png',
+            'scaleDR': 'scaledr.png',
+            'scaleHealShield': 'scalehealshield.png',
+            'scaleHealth': 'scalehealth.png',
+            'scaleHPRegen': 'scalehpregen.png',
+            'scaleLevel': 'scalelevel.png',
+            'scaleLS': 'scalels.png',
+            'scaleMana': 'scalemana.png',
+            'scaleManaRegen': 'scalemanaregen.png',
+            'scaleMPen': 'scalempen.png',
+            'scaleMR': 'scalemr.png',
+            'scaleMS': 'scalems.png',
+            'scaleRange': 'scalerange.png',
+            'scaleSV': 'scalesv.png',
+            'scaleTenacity': 'scaletenacity.png'
+        };
+
+        // Helper function to get full URL for a stat icon
+        function getStatIconUrl(keyword) {
+            return STAT_ICONS_BASE_URL + imageKeywordMap[keyword];
+        }
+
         function populateDescriptionVariables(augment) {
             let description = augment['desc'];
             const dataValues = augment['dataValues'] || {};
 
-            // First, handle complex calculations and special placeholders using the calculation engine
+            console.log('Original description:', description); // Debug log
+
+            // FIRST: Handle %i:keyword% patterns for inline images BEFORE other processing
+            description = description.replaceAll(/%i:([^%]+)%/gi, (match, keyword) => {
+                console.log('Converting image pattern:', match, 'keyword:', keyword); // Debug log
+                if (imageKeywordMap[keyword]) {
+                    const imgTag = `<img${keyword}>`;
+                    console.log('Created custom img tag:', imgTag); // Debug log
+                    return imgTag;
+                }
+                console.log('Unknown keyword:', keyword); // Debug log
+                return `[${keyword}]`; // Fallback for unknown keywords
+            });
+
+            console.log('After image conversion:', description); // Debug log
+
+            // Then handle complex calculations and special placeholders using the calculation engine
             description = calculationEngine.processCalculations(description, augment);
 
             // Then handle simple @DataValue@ and @DataValue*multiplier@ placeholders
@@ -1022,12 +1207,10 @@
             // Clean up the description
             let modifiedDescription = description.replaceAll("<br>", "\n");
             
-            // Remove %i:keyword% patterns (these are internal formatting codes)
-            modifiedDescription = modifiedDescription.replaceAll(/((%i:[^%]+)% )/gi, "");
-            
             // Handle any remaining runtime placeholders (@f1@, @f2@, etc.)
             modifiedDescription = modifiedDescription.replaceAll(/@f(\d+)@/g, '[runtime value]');
             
+            console.log('Final processed description:', modifiedDescription); // Debug log
             return modifiedDescription;
         }
 
@@ -1126,6 +1309,7 @@
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('advancedScreen').style.display = 'none';
             document.getElementById('colorsScreen').style.display = 'none';
+            document.getElementById('iconsScreen').style.display = 'none';
             
             // Show selected screen
             document.getElementById(screenName + 'Screen').style.display = 'block';
@@ -1143,6 +1327,96 @@
             if (screenName === 'colors') {
                 populateColorTable();
             }
+            
+            // Initialize icon grid if switching to icons screen
+            if (screenName === 'icons') {
+                populateIconGrid();
+            }
+        }
+
+        // ===== ICON GRID MANAGEMENT =====
+        function populateIconGrid() {
+            const iconGrid = document.getElementById('iconGrid');
+            iconGrid.innerHTML = '';
+            
+            // Create icon buttons for each stat icon
+            Object.keys(imageKeywordMap).forEach(keyword => {
+                const iconButton = createIconButton(keyword);
+                iconGrid.appendChild(iconButton);
+            });
+        }
+
+        function createIconButton(keyword) {
+            const button = document.createElement('button');
+            button.style.cssText = `
+                width: 36px;
+                height: 36px;
+                border: 1px solid #555;
+                border-radius: 4px;
+                background: #3a3a3a;
+                cursor: pointer;
+                padding: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+            `;
+            
+            // Add hover effects
+            button.onmouseenter = () => {
+                button.style.borderColor = '#007bff';
+                button.style.backgroundColor = '#4a4a4a';
+                button.style.transform = 'scale(1.05)';
+            };
+            
+            button.onmouseleave = () => {
+                button.style.borderColor = '#555';
+                button.style.backgroundColor = '#3a3a3a';
+                button.style.transform = 'scale(1)';
+            };
+            
+            // Use mousedown with preventDefault to avoid losing focus
+            button.onmousedown = (e) => {
+                e.preventDefault(); // Prevent focus loss from textarea
+                insertIconAtCursor(keyword);
+            };
+            
+            // Add tooltip
+            button.title = `Insert ${keyword} icon`;
+            
+            // Create and add the icon image
+            const img = document.createElement('img');
+            img.src = getStatIconUrl(keyword);
+            img.style.cssText = 'width: 28px; height: 28px; pointer-events: none;';
+            img.alt = keyword;
+            
+            button.appendChild(img);
+            
+            return button;
+        }
+
+        function insertIconAtCursor(keyword) {
+            const textarea = document.getElementById('descriptionInput');
+            const iconTag = `<img${keyword}>`;
+            
+            // Get current cursor position
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            // Insert the icon tag at cursor position
+            const newText = text.substring(0, start) + iconTag + text.substring(end);
+            textarea.value = newText;
+            
+            // Move cursor to after the inserted text
+            const newCursorPos = start + iconTag.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            
+            // Keep focus on textarea
+            textarea.focus();
+            
+            // Update the canvas with the new description
+            updateCanvasVariable(newText, 'augmentDescription');
         }
 
         // ===== COLOR TABLE MANAGEMENT =====
@@ -1895,7 +2169,7 @@
             { name: "Shadowflame", filename: "4645_shadowflame.png", id: 300 },
             { name: "Stormsurge", filename: "4646_stormsurge.png", id: 301 },
             { name: "Iron Spike Whip", filename: "6029_fighter_t2_ironspikewhip.png", id: 302 },
-            { name: "Silvermere Dawn", filename: "6035_fighter_t3_silvermeredawn.png", id: 303 },
+            { name: "Cruelty", filename: "6035_fighter_t3_silvermeredawn.png", id: 303 },
             { name: "Death's Dance", filename: "6333_fighter_t3_deathsdance.png", id: 304 },
             { name: "Chempunk Chainsword", filename: "6609_fighter_t3_chempunkchainsword.png", id: 305 },
             { name: "Sundered Sky", filename: "6610_sunderedsky.png", id: 306 },
@@ -2087,7 +2361,7 @@
             { name: "Crown of the Shattered Queen", filename: "4644_crownoftheshatteredqueen.png", id: 105 },
             { name: "Shadowflame", filename: "4645_shadowflame.png", id: 106 },
             { name: "Stormsurge", filename: "4646_stormsurge.png", id: 107 },
-            { name: "Silvermere Dawn", filename: "6035_silvermeredawn.png", id: 108 },
+            { name: "Cruelty", filename: "6035_silvermeredawn.png", id: 108 },
             { name: "Death's Dance", filename: "6333_deathsdance.png", id: 109 },
             { name: "Chempunk Chainsword", filename: "6609_chempunkchainsword.png", id: 110 },
             { name: "Sundered Sky", filename: "6610_sunderedsky.png", id: 111 },
@@ -2443,8 +2717,39 @@
             settings['selectedChampion'] = null;
             settings['selectedItem'] = null;
             settings['customImage'] = null;
+            
+            // Set the title
             settings['augmentTitle'] = settings['selectedArenaItem'].name;
             document.getElementById('titleInput').value = settings['augmentTitle'];
+            
+            // Set the description using fetched data
+            let description = '';
+            if (settings['selectedArenaItem'].description) {
+                description = settings['selectedArenaItem'].description;
+                
+                // Add brief (flavor text) if available, separated by a line break
+                // if (settings['selectedArenaItem'].brief) {
+                //     description += '\n\n' + settings['selectedArenaItem'].brief;
+                // }
+            } else if (settings['selectedArenaItem'].brief) {
+                // Use brief as fallback if no main description
+                // description = settings['selectedArenaItem'].brief;
+            }
+            
+            // Process the description to convert %i:keyword% patterns to <imgkeyword> tags
+            // Create a temporary object that mimics an augment for the conversion function
+            const tempItem = { desc: description, dataValues: {} };
+            const processedDescription = populateDescriptionVariables(tempItem);
+            
+            settings['augmentDescription'] = processedDescription;
+            document.getElementById('descriptionInput').value = settings['augmentDescription'];
+            
+            // Apply preferred frame based on item code type
+            if (settings['selectedArenaItem'].preferredFrame) {
+                settings['selectedFrame'] = borderImages[settings['selectedArenaItem'].preferredFrame];
+                settings['shinyFrame'] = false; // Use regular frames, not shiny ones
+            }
+            
             mergeAugmentImages();
         }
 
@@ -2552,7 +2857,236 @@
             filterChampions();
         }
 
+        // Extract numeric code from item filename
+        function extractItemCode(filename) {
+            // Match patterns like "096_", "1001_", "7106_", etc.
+            const match = filename.match(/^(\d+)_/);
+            if (!match) return null;
+            
+            const code = match[1];
+            // If code already starts with "44", use it as-is for stringtable lookup
+            // Otherwise, we'll prepend "44" when constructing the key
+            return code;
+        }
+
+        // Fetch arena item descriptions from stringtable and enhance arena items data
+        async function fetchArenaItemDescriptions() {
+            const stringtableUrl = "https://raw.communitydragon.org/pbe/game/en_us/data/menu/en_us/lol.stringtable.json";
+            
+            try {
+                console.log("Fetching arena item descriptions from stringtable...");
+                const response = await fetch(stringtableUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const entries = data.entries || {};
+                
+                // Step 1: Build name-to-codes mapping from stringtable
+                console.log("Building name-to-codes mapping...");
+                const nameToCodesMap = {};
+                
+                // Extract all item_ANYNUMBER_name entries
+                Object.keys(entries).forEach(key => {
+                    const nameMatch = key.match(/^item_(\d+)_name$/);
+                    if (nameMatch) {
+                        const code = nameMatch[1];
+                        const itemName = entries[key];
+                        
+                        if (!nameToCodesMap[itemName]) {
+                            nameToCodesMap[itemName] = [];
+                        }
+                        nameToCodesMap[itemName].push(code);
+                    }
+                });
+                
+                console.log(entries["generatedtip_item_447109_externaldescription"]);
+
+                console.log(`Found ${Object.keys(nameToCodesMap).length} unique item names in stringtable`);
+                
+                // Step 2: Process each arena item with smart code selection
+                let foundDescriptions = 0;
+                let foundBriefs = 0;
+                let foundNames = 0;
+                let notFoundItems = [];
+                
+                arenaItemsDataArray.forEach(item => {
+                    // Extract original code from filename for fallback
+                    const originalCode = extractItemCode(item.filename);
+                    item.originalCode = originalCode;
+                    
+                    // Try to find the item by name in stringtable
+                    const possibleCodes = nameToCodesMap[item.name] || [];
+                    
+                    let selectedCode = null;
+                    let selectedCodeType = 'none';
+                    
+                    if (possibleCodes.length > 0) {
+                        // Step 3: Smart code selection with priority
+                        // Priority 1: 22xxxx codes (arena versions of standard items)
+                        const arena22Codes = possibleCodes.filter(code => code.startsWith('22'));
+                        // Priority 2: 44xxxx codes (arena exclusives)
+                        const arena44Codes = possibleCodes.filter(code => code.startsWith('44'));
+                        // Priority 3: Other codes (standard versions)
+                        const otherCodes = possibleCodes.filter(code => !code.startsWith('22') && !code.startsWith('44'));
+                        
+                        // Select best code with preference for those that have summaries
+                        const selectBestCode = (codes, type) => {
+                            if (codes.length === 0) return null;
+                            
+                            // Prefer codes that have summaries
+                            const codesWithSummary = codes.filter(code => entries[`item_${code}_summary`]);
+                            if (codesWithSummary.length > 0) {
+                                selectedCodeType = type + '-with-summary';
+                                return codesWithSummary[0];
+                            }
+                            
+                            selectedCodeType = type;
+                            return codes[0];
+                        };
+                        
+                        // Try priorities in order
+                        selectedCode = selectBestCode(arena22Codes, '22xxx') || 
+                                     selectBestCode(arena44Codes, '44xxx') || 
+                                     selectBestCode(otherCodes, 'other');
+                    }
+                    
+                    // Fallback: try original code from filename if no name match found
+                    if (!selectedCode && originalCode) {
+                        // Try 22xxxx version first, then 44xxxx, then original
+                        const fallbackCodes = [`22${originalCode}`, `44${originalCode}`, originalCode];
+                        for (const code of fallbackCodes) {
+                            if (entries[`item_${code}_name`]) {
+                                selectedCode = code;
+                                selectedCodeType = 'fallback-' + (code.startsWith('22') ? '22xxx' : code.startsWith('44') ? '44xxx' : 'original');
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Step 4: Populate item data if we found a valid code
+                    if (selectedCode) {
+                        item.code = selectedCode;
+                        item.selectedCodeType = selectedCodeType;
+                        
+                        // Set preferred frame based on code type
+                        if (selectedCode.startsWith('22')) {
+                            item.preferredFrame = 'augmentcard_frame_gold';
+                        } else if (selectedCode.startsWith('44')) {
+                            item.preferredFrame = 'augmentcard_frame_prismatic';
+                        } else {
+                            item.preferredFrame = 'augmentcard_frame_gold'; // Default for other codes
+                        }
+                        
+                        // Always use name from stringtable
+                        const nameKey = `item_${selectedCode}_name`;
+                        if (entries[nameKey]) {
+                            item.name = entries[nameKey];
+                            foundNames++;
+                        }
+                        
+                        // Look for external description (includes stats with icons)
+                        const externalDescKey = `generatedtip_item_${selectedCode}_externaldescription`;
+                        const summaryKey = `item_${selectedCode}_summary`;
+                        
+                        let finalDescription = '';
+                        
+                        if (entries[externalDescKey]) {
+                            // Extract the <stats> block from external description
+                            const externalDesc = entries[externalDescKey];
+                            const statsMatch = externalDesc.match(/<stats>(.*?)<\/stats>/s);
+                            
+                            if (statsMatch) {
+                                // Clean up the stats block by removing newlines and <br> tags
+                                let statsBlock = statsMatch[1];
+                                statsBlock = statsBlock.replace(/<br\s*\/?>/gi, ' '); // Replace <br> with space
+                                statsBlock = statsBlock.replace(/\n/g, ' '); // Replace newlines with space
+                                statsBlock = statsBlock.replace(/\s+/g, ' '); // Collapse multiple spaces
+                                statsBlock = statsBlock.trim(); // Remove leading/trailing whitespace
+                                
+                                // Get the summary text
+                                const summaryText = entries[summaryKey] || '';
+                                
+                                // Combine: stats block + two newlines + summary
+                                if (summaryText) {
+                                    finalDescription = statsBlock + '\n\n' + summaryText;
+                                } else {
+                                    finalDescription = statsBlock;
+                                }
+                            } else {
+                                // If no stats block found, use the full external description
+                                finalDescription = externalDesc;
+                            }
+                            
+                            item.description = finalDescription;
+                            foundDescriptions++;
+                        } else {
+                            // Fallback to summary if external description not available
+                            if (entries[summaryKey]) {
+                                item.description = entries[summaryKey];
+                                foundDescriptions++;
+                            }
+                        }
+                        
+                        // Look for brief (flavor text)
+                        const briefKey = `item_${selectedCode}_brief`;
+                        if (entries[briefKey]) {
+                            item.brief = entries[briefKey];
+                            foundBriefs++;
+                        }
+                        
+                    } else {
+                        // Item not found in stringtable
+                        notFoundItems.push(item.name);
+                        item.code = originalCode; // Keep original for debugging
+                        item.selectedCodeType = 'not-found';
+                        item.preferredFrame = 'augmentcard_frame_gold'; // Default frame
+                    }
+                });
+                
+                // Step 5: Report results
+                console.log(`Arena item descriptions loaded: ${foundNames} names, ${foundDescriptions} descriptions, ${foundBriefs} briefs found out of ${arenaItemsDataArray.length} arena items`);
+                
+                if (notFoundItems.length > 0) {
+                    console.warn(`Items not found in stringtable (${notFoundItems.length}):`, notFoundItems);
+                }
+                
+                return {
+                    totalItems: arenaItemsDataArray.length,
+                    itemsWithCodes: arenaItemsDataArray.filter(item => item.code).length,
+                    namesFound: foundNames,
+                    descriptionsFound: foundDescriptions,
+                    briefsFound: foundBriefs,
+                    notFoundItems: notFoundItems
+                };
+                
+            } catch (error) {
+                console.error("Error fetching arena item descriptions:", error);
+                
+                // Still add original codes even if fetch fails
+                arenaItemsDataArray.forEach(item => {
+                    const code = extractItemCode(item.filename);
+                    item.originalCode = code;
+                    item.code = code;
+                    item.selectedCodeType = 'error-fallback';
+                });
+                
+                return {
+                    error: error.message,
+                    totalItems: arenaItemsDataArray.length,
+                    itemsWithCodes: arenaItemsDataArray.filter(item => item.code).length,
+                    namesFound: 0,
+                    descriptionsFound: 0,
+                    briefsFound: 0,
+                    notFoundItems: []
+                };
+            }
+        }
+
         async function init() {
+            console.log("Starting index html")
             initializeDragDrop();
             
             // Initialize color table
@@ -2568,14 +3102,21 @@
             filterArenaItems();
             populateModifierDropdown();
             
+            // Preload stat icons for inline images
+            preloadStatIcons();
+            
             // Load current preset instead of individual settings
             const currentPresetName = presetManager.getCurrentPresetName();
             presetManager.applyPreset(currentPresetName, settings);
             
             let p1 = getArenaJson();
             let p2 = getChampionJson();
+            
+            // Fetch arena item descriptions
+            let p3 = fetchArenaItemDescriptions();
 
-            Promise.all([p1, p2]).then(() => {
+            Promise.all([p1, p2, p3]).then(() => {
+                console.log("All data loaded successfully");
                 // Apply saved language setting after data is loaded
                 const savedLanguage = loadFromLocalStorage('language', 'en_us');
                 if (savedLanguage !== 'en_us') {
