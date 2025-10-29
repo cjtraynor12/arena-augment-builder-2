@@ -60,17 +60,62 @@
         .toast.error {
             background: #dc3545;
         }
+        
+        /* Split Drop Zone Styles */
+        .icon-drop-zone {
+            top: 0;
+            height: 50%;
+            border-color: #007bff;
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        
+        .frame-drop-zone {
+            top: 50%;
+            height: 50%;
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .icon-drop-zone .drop-text {
+            color: #007bff;
+        }
+        
+        .frame-drop-zone .drop-text {
+            color: #28a745;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
         <!-- Augments Section -->
         <div class="augments-section">
-            <div class="search-container">
-                <input type="text" id="augmentSearchInput" class="search-input" placeholder="Search augments..." oninput="updateAugmentSearch(this.value)">
-                <span class="clear-button" onclick="updateAugmentSearch(''); document.getElementById('augmentSearchInput').value = '';">✖</span>
+            <!-- Arena Augments Content -->
+            <div id="arenaAugmentsContent">
+                <div class="search-container">
+                    <input type="text" id="arenaAugmentSearchInput" class="search-input" placeholder="Search arena augments..." oninput="updateArenaAugmentSearch(this.value)">
+                    <span class="clear-button" onclick="updateArenaAugmentSearch(''); document.getElementById('arenaAugmentSearchInput').value = '';">✖</span>
+                    <!-- Tab Navigation -->
+                    <div class="tab-navigation">
+                        <button id="arenaAugmentsTabBtn1" class="tab-btn active" onclick="switchAugmentTab('arena')">Arena</button>
+                        <button id="aramAugmentsTabBtn1" class="tab-btn" onclick="switchAugmentTab('aram')">ARAM</button>
+                    </div>
+                </div>
+                <div class="list" id="arenaAugmentsList"></div>
             </div>
-            <div class="list" id="augmentsList"></div>
+            
+            <!-- ARAM Augments Content -->
+            <div id="aramAugmentsContent" style="display: none;">
+                <div class="search-container">
+                    <input type="text" id="aramAugmentSearchInput" class="search-input" placeholder="Search ARAM augments..." oninput="updateAramAugmentSearch(this.value)">
+                    <span class="clear-button" onclick="updateAramAugmentSearch(''); document.getElementById('aramAugmentSearchInput').value = '';">✖</span>
+                    <!-- Tab Navigation -->
+                    <div class="tab-navigation">
+                        <button id="arenaAugmentsTabBtn2" class="tab-btn" onclick="switchAugmentTab('arena')">Arena</button>
+                        <button id="aramAugmentsTabBtn2" class="tab-btn active" onclick="switchAugmentTab('aram')">ARAM</button>
+                    </div>
+                </div>
+                <div class="list" id="aramAugmentsList"></div>
+            </div>
         </div>
 
         <!-- Controls Section -->
@@ -79,8 +124,11 @@
                 <div class="image-container">
                     <div id="canvasContainer">
                         <img id="imageOutput" alt="Generated augment image">
-                        <div id="dropOverlay" class="drop-overlay">
-                            <div class="drop-text">Drop image here</div>
+                        <div id="iconDropZone" class="drop-overlay icon-drop-zone">
+                            <div class="drop-text">Drop image to replace icon</div>
+                        </div>
+                        <div id="frameDropZone" class="drop-overlay frame-drop-zone">
+                            <div class="drop-text">Drop image to replace frame</div>
                         </div>
                     </div>
                     <div class="vertical-slider-container">
@@ -99,15 +147,18 @@
                         <div class="vertical-controls-row">
                             <div class="form-row">
                                 <label for="customFrame">Frame Override</label>
-                                <select id="customFrame" oninput="updateFrameVariable(this.value)">
-                                    <option value="augmentcard_bg">No Frame</option>
-                                    <option value="augmentcard_frame_silver">Silver</option>
-                                    <option value="augmentcard_frame_gold">Gold</option>
-                                    <option value="augmentcard_frame_prismatic">Prismatic</option>
-                                    <option value="augmentcard_sheenglow_silver">Shiny Silver</option>
-                                    <option value="augmentcard_sheenglow_gold">Shiny Gold</option>
-                                    <option value="augmentcard_sheenglow_prismatic">Shiny Prismatic</option>
-                                </select>
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <select id="customFrame" oninput="updateFrameVariable(this.value)" style="flex: 1;">
+                                        <option value="augmentcard_bg">No Frame</option>
+                                        <option value="augmentcard_frame_silver">Silver</option>
+                                        <option value="augmentcard_frame_gold">Gold</option>
+                                        <option value="augmentcard_frame_prismatic">Prismatic</option>
+                                        <option value="augmentcard_sheenglow_silver">Shiny Silver</option>
+                                        <option value="augmentcard_sheenglow_gold">Shiny Gold</option>
+                                        <option value="augmentcard_sheenglow_prismatic">Shiny Prismatic</option>
+                                    </select>
+                                    <button onclick="clearCustomFrame()" title="Clear custom frame" style="background-color: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️</button>
+                                </div>
                             </div>
 
                             <div class="form-row">
@@ -550,13 +601,30 @@
                         varValue = varValue * 100;
                     } else if (multiplier === '*-100') {
                         varValue = varValue * -100;
-                    } else {
-                        // For other multipliers, try to parse safely
-                        const multiplierNum = parseFloat(multiplier.replace('*', ''));
-                        if (!isNaN(multiplierNum)) {
-                            varValue = varValue * multiplierNum;
+                        } else {
+                            if (index === 1 && settings['shinyFrame']) {
+                                return ctx.drawImage(image.img, xPosition - 256, yPosition - 256);
+                            } else if (index === 1 && settings['customFrame']) {
+                                // For custom frames, use the same offset as shiny frames for symmetrical images
+                                // This ensures proper centering for 1024x1024 and similar large frames
+                                const imgWidth = image.img.naturalWidth || image.img.width;
+                                const imgHeight = image.img.naturalHeight || image.img.height;
+                                
+                                // For symmetrical images (like 1024x1024), use the same offset as shiny frames
+                                if (imgWidth === imgHeight && imgWidth >= 1024) {
+                                    return ctx.drawImage(image.img, xPosition - 256, yPosition - 256);
+                                } else {
+                                    // For other custom frames, calculate dynamic offset
+                                    const standardWidth = 512;
+                                    const standardHeight = 512; // Use 512 instead of 600 for better centering
+                                    const xOffset = (imgWidth - standardWidth) / 2;
+                                    const yOffset = (imgHeight - standardHeight) / 2;
+                                    return ctx.drawImage(image.img, xPosition - xOffset, yPosition - yOffset);
+                                }
+                            } else {
+                                return ctx.drawImage(image.img, xPosition, yPosition);
+                            }
                         }
-                    }
                 }
                 
                 // Format the value nicely
@@ -746,6 +814,19 @@
                         } else {
                             if (index === 1 && settings['shinyFrame']) {
                                 return ctx.drawImage(image.img, xPosition - 256, yPosition - 256);
+                            } else if (index === 1 && settings['customFrame']) {
+                                // For custom frames, we need to center them properly
+                                // Check if the image is larger than standard frame size and adjust accordingly
+                                const standardWidth = 512;
+                                const standardHeight = 512;
+                                const imgWidth = image.img.naturalWidth || image.img.width;
+                                const imgHeight = image.img.naturalHeight || image.img.height;
+                                
+                                // Calculate offset to center the custom frame
+                                const xOffset = (imgWidth - standardWidth) / 2;
+                                const yOffset = (imgHeight - standardHeight) / 2;
+                                
+                                return ctx.drawImage(image.img, xPosition - xOffset, yPosition - yOffset);
                             } else {
                                 return ctx.drawImage(image.img, xPosition, yPosition);
                             }
@@ -1217,18 +1298,22 @@
         // ===== DRAG AND DROP MODULE =====
         function initializeDragDrop() {
             const canvasContainer = document.getElementById('canvasContainer');
+            const iconDropZone = document.getElementById('iconDropZone');
+            const frameDropZone = document.getElementById('frameDropZone');
 
+            // Prevent default drag behaviors on container and body
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 canvasContainer.addEventListener(eventName, preventDefaults, false);
                 document.body.addEventListener(eventName, preventDefaults, false);
             });
 
+            // Handle drag events for both zones
             ['dragenter', 'dragover'].forEach(eventName => {
-                canvasContainer.addEventListener(eventName, highlight, false);
+                canvasContainer.addEventListener(eventName, handleDragOver, false);
             });
 
-            ['dragleave', 'drop'].forEach(eventName => {
-                canvasContainer.addEventListener(eventName, unhighlight, false);
+            ['dragleave'].forEach(eventName => {
+                canvasContainer.addEventListener(eventName, handleDragLeave, false);
             });
 
             canvasContainer.addEventListener('drop', handleDrop, false);
@@ -1239,25 +1324,70 @@
             e.stopPropagation();
         }
 
-        function highlight(e) {
-            document.getElementById('canvasContainer').classList.add('drag-over');
+        function handleDragOver(e) {
+            const canvasContainer = document.getElementById('canvasContainer');
+            const iconDropZone = document.getElementById('iconDropZone');
+            const frameDropZone = document.getElementById('frameDropZone');
+            
+            // Get mouse position relative to canvas container
+            const rect = canvasContainer.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const containerHeight = rect.height;
+            
+            // Determine which zone we're in (top 50% = icon, bottom 50% = frame)
+            const isInIconZone = y < containerHeight / 2;
+            
+            if (isInIconZone) {
+                iconDropZone.style.display = 'flex';
+                frameDropZone.style.display = 'none';
+            } else {
+                iconDropZone.style.display = 'none';
+                frameDropZone.style.display = 'flex';
+            }
         }
 
-        function unhighlight(e) {
-            document.getElementById('canvasContainer').classList.remove('drag-over');
+        function handleDragLeave(e) {
+            // Only hide overlays if we're leaving the canvas container entirely
+            const canvasContainer = document.getElementById('canvasContainer');
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Check if mouse is outside the container bounds
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                document.getElementById('iconDropZone').style.display = 'none';
+                document.getElementById('frameDropZone').style.display = 'none';
+            }
         }
 
         function handleDrop(e) {
+            const canvasContainer = document.getElementById('canvasContainer');
+            const rect = canvasContainer.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const containerHeight = rect.height;
+            
+            // Hide both overlays
+            document.getElementById('iconDropZone').style.display = 'none';
+            document.getElementById('frameDropZone').style.display = 'none';
+            
+            // Determine which zone the drop occurred in
+            const isInIconZone = y < containerHeight / 2;
+            
             const dt = e.dataTransfer;
             const files = dt.files;
-            handleFiles(files);
+            
+            if (isInIconZone) {
+                handleFiles(files, 'icon');
+            } else {
+                handleFiles(files, 'frame');
+            }
         }
 
-        function handleFiles(files) {
-            ([...files]).forEach(handleFile);
+        function handleFiles(files, dropType) {
+            ([...files]).forEach(file => handleFile(file, dropType));
         }
 
-        function handleFile(file) {
+        function handleFile(file, dropType) {
             if (!file.type.startsWith('image/')) {
                 alert('Please drop an image file (jpg, png, gif, webp)');
                 return;
@@ -1266,7 +1396,11 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const imageDataUrl = e.target.result;
-                setCustomImage(imageDataUrl);
+                if (dropType === 'icon') {
+                    setCustomImage(imageDataUrl);
+                } else if (dropType === 'frame') {
+                    setCustomFrame(imageDataUrl);
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -1275,6 +1409,13 @@
             settings['selectedAugment'] = null;
             settings['selectedChampion'] = null;
             settings['customImage'] = imageDataUrl;
+            
+            mergeAugmentImages();
+        }
+
+        function setCustomFrame(imageDataUrl) {
+            settings['customFrame'] = imageDataUrl;
+            settings['shinyFrame'] = false; // Custom frames are not shiny
             
             mergeAugmentImages();
         }
@@ -1865,6 +2006,7 @@
         const itemIconsBaseUrl = "https://raw.communitydragon.org/pbe/game/assets/items/icons2d/";
         const arenaItemIconsBaseUrl = "https://raw.communitydragon.org/pbe/game/assets/items/icons2d/autoatlas/xlborderedicons/";
         const itemModifiersBaseUrl = "https://raw.communitydragon.org/pbe/game/assets/items/itemmodifiers/";
+        const aramMayhemAugmentsBaseUrl = "https://raw.communitydragon.org/pbe/game/assets/ux/kiwi/augments/icons/";
 
         const itemsDataArray = [
             { name: "Eye of the Observer", filename: "096_eye_of_the_observer.png", id: 1 },
@@ -2425,6 +2567,115 @@
             { name: "Weirding Witch Hat", filename: "weirdingwitchat.png", id: 8 }
         ];
 
+        const aram_mayhem_augments = [
+            "adamant",
+            "babykitty",
+            "biggestsnowballever",
+            "cheating",
+            "criticalrhythm",
+            "cruelty",
+            "darksteeltalons",
+            "empyreampromise",
+            "escapeplan",
+            "fetch",
+            "finalform",
+            "flash2",
+            "getexcited",
+            "glasscannon",
+            "goldrend",
+            "hatonahat",
+            "kingme",
+            "laseheal",
+            "mightyshield",
+            "mobiuscoil",
+            "nightstalking",
+            "poltergeist",
+            "proteinshake",
+            "quest_urfschampion",
+            "sneakerhead",
+            "snowballroulette",
+            "snowballupgrade",
+            "spiritualpurification",
+            "swiftandsafe",
+            "thebrutalizer",
+            "upgradecollector",
+            "upgradecutlass",
+            "upgradehubris",
+            "upgradeie",
+            "upgradeimmolate",
+            "upgrademikaelsblessing",
+            "upgradesheen",
+            "upgradezh",
+            "vampired",
+            "windbeneathblade",
+            "zerohour"
+        ];
+
+        // Convert ARAM augment names to proper data structure
+        let aramAugmentsData = null;
+
+        function createAramAugmentsData() {
+            aramAugmentsData = aram_mayhem_augments.map((augmentName, index) => {
+                // Create display name by capitalizing and formatting
+                const displayName = augmentName
+                    .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+                    .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+                    .replace(/upgrade/gi, 'Upgrade ') // Add space after "upgrade"
+                    .replace(/quest_/gi, 'Quest: ') // Replace quest_ with "Quest: "
+                    .replace(/\s+/g, ' ') // Clean up multiple spaces
+                    .trim();
+
+                return {
+                    id: index + 1,
+                    name: displayName,
+                    filename: augmentName,
+                    element: null
+                };
+            }).sort(compareNames);
+        }
+
+        function createAramAugmentButton(augmentData) {
+            const container = document.createElement("div");
+            container.setAttribute("class", "augmentButton");
+            container.setAttribute("onclick", "setSelectedAramAugment('" + augmentData['filename'] + "')");
+
+            const augmentName = document.createElement("span");
+            augmentName.innerText = augmentData['name'];
+            container.appendChild(augmentName);
+
+            const image = document.createElement("img");
+            image.setAttribute("src", aramMayhemAugmentsBaseUrl + augmentData['filename'] + "_large.png");
+            container.appendChild(image);
+
+            return container;
+        }
+
+        function displayAramAugments() {
+            if (!aramAugmentsData) {
+                createAramAugmentsData();
+            }
+            
+            aramAugmentsData.map((augmentData) => {
+                augmentData['element'] = createAramAugmentButton(augmentData);
+                return augmentData;
+            });
+        }
+
+        function setSelectedAramAugment(filename) {
+            // Clear other selections
+            settings['selectedAugment'] = null;
+            settings['selectedChampion'] = null;
+            settings['selectedArenaItem'] = null;
+            settings['selectedItem'] = null;
+            settings['customImage'] = null;
+            
+            // Set the ARAM augment image URL
+            settings['selectedAramAugment'] = filename;
+            
+            // Only set the image, don't change title or description
+            mergeAugmentImages();
+        }
+
         // ===== MAIN APPLICATION =====
         const settings = {
             selectedAugment: null,
@@ -2445,7 +2696,8 @@
             titleLineHeight: 26,
             descriptionLineHeight: 18,
             language: 'en_us',
-            customImage: null
+            customImage: null,
+            customFrame: null
         };
 
         const borderImages = {
@@ -2461,14 +2713,27 @@
         const augmentFrameBaseUrl = communityDragonBaseUrl + "assets/ux/cherry/augments/augmentselection/";
 
         let augmentSearch = "";
+        let arenaAugmentSearch = "";
+        let aramAugmentSearch = "";
         let championSearch = "";
         let itemSearch = "";
         let arenaItemSearch = "";
         let currentIconTab = "champions";
+        let currentAugmentTab = "arena";
 
         function updateAugmentSearch(value) {
             augmentSearch = value;
             filterAugments();
+        }
+
+        function updateArenaAugmentSearch(value) {
+            arenaAugmentSearch = value;
+            filterArenaAugments();
+        }
+
+        function updateAramAugmentSearch(value) {
+            aramAugmentSearch = value;
+            filterAramAugments();
         }
 
         function updateChampionSearch(value) {
@@ -2484,6 +2749,34 @@
         function updateArenaItemSearch(value) {
             arenaItemSearch = value;
             filterArenaItems();
+        }
+
+        function switchAugmentTab(tab) {
+            currentAugmentTab = tab;
+            
+            // Update tab button states
+            const arenaAugmentsTabBtns = document.querySelectorAll('[id^="arenaAugmentsTabBtn"]');
+            const aramAugmentsTabBtns = document.querySelectorAll('[id^="aramAugmentsTabBtn"]');
+            
+            arenaAugmentsTabBtns.forEach(btn => {
+                btn.classList.toggle('active', tab === 'arena');
+            });
+            aramAugmentsTabBtns.forEach(btn => {
+                btn.classList.toggle('active', tab === 'aram');
+            });
+            
+            // Show/hide appropriate content
+            document.getElementById('arenaAugmentsContent').style.display = tab === 'arena' ? 'block' : 'none';
+            document.getElementById('aramAugmentsContent').style.display = tab === 'aram' ? 'block' : 'none';
+            
+            // Clear search when switching tabs
+            if (tab === 'arena') {
+                document.getElementById('arenaAugmentSearchInput').value = '';
+                updateArenaAugmentSearch('');
+            } else {
+                document.getElementById('aramAugmentSearchInput').value = '';
+                updateAramAugmentSearch('');
+            }
         }
 
         function switchIconTab(tab) {
@@ -2584,6 +2877,24 @@
             if (arenaJsonData) {
                 arenaJsonData.filter((e) => (e['name'].toLowerCase().includes(augmentSearch.toLowerCase()) > 0))
                     .forEach((e) => augmentsList.appendChild(e.element));
+            }
+        }
+
+        function filterArenaAugments() {
+            const arenaAugmentsList = document.getElementById("arenaAugmentsList");
+            arenaAugmentsList.innerHTML = "";
+            if (arenaJsonData) {
+                arenaJsonData.filter((e) => (e['name'].toLowerCase().includes(arenaAugmentSearch.toLowerCase()) > 0))
+                    .forEach((e) => arenaAugmentsList.appendChild(e.element));
+            }
+        }
+
+        function filterAramAugments() {
+            const aramAugmentsList = document.getElementById("aramAugmentsList");
+            aramAugmentsList.innerHTML = "";
+            if (aramAugmentsData) {
+                aramAugmentsData.filter((e) => (e['name'].toLowerCase().includes(aramAugmentSearch.toLowerCase()) > 0))
+                    .forEach((e) => aramAugmentsList.appendChild(e.element));
             }
         }
 
@@ -2783,6 +3094,8 @@
                 iconImage = arenaItemIconsBaseUrl + settings['selectedArenaItem']['filename'];
             } else if (settings['selectedItem'] !== null) {
                 iconImage = itemIconsBaseUrl + settings['selectedItem']['filename'];
+            } else if (settings['selectedAramAugment'] !== null) {
+                iconImage = aramMayhemAugmentsBaseUrl + settings['selectedAramAugment'] + "_large.png";
             } else {
                 return;
             }
@@ -2797,9 +3110,17 @@
             const modifiedYOffset = parseInt(settings['iconYOffset']) + 10 - sizeDifference;
             const imagePositionOffsets = {2:[modifiedXOffset, modifiedYOffset]};
 
+            // Determine frame image to use (custom or preset)
+            let frameImage;
+            if (settings['customFrame']) {
+                frameImage = settings['customFrame'];
+            } else {
+                frameImage = augmentFrameBaseUrl + settings['selectedFrame'];
+            }
+
             const images = [
                 augmentFrameBaseUrl + borderImages['augmentcard_bg'],
-                augmentFrameBaseUrl + settings['selectedFrame'],
+                frameImage,
                 iconImage
             ];
 
@@ -2825,6 +3146,12 @@
         function updateFrameVariable(value) {
             settings['selectedFrame'] = borderImages[value];
             settings['shinyFrame'] = value.includes("sheenglow");
+            settings['customFrame'] = null; // Clear custom frame when preset is selected
+            mergeAugmentImages();
+        }
+
+        function clearCustomFrame() {
+            settings['customFrame'] = null;
             mergeAugmentImages();
         }
 
@@ -2848,7 +3175,7 @@
             // Don't set default fonts here - they'll be loaded from localStorage in init()
             setSelectedAugment(1);
             displayAugments(arenaJsonData);
-            filterAugments();
+            filterArenaAugments(); // Use the new arena-specific filter
         }
 
         async function getChampionJson() {
@@ -3101,6 +3428,10 @@
             displayArenaItems(arenaItemsDataArray);
             filterArenaItems();
             populateModifierDropdown();
+            
+            // Initialize ARAM augments
+            displayAramAugments();
+            filterAramAugments();
             
             // Preload stat icons for inline images
             preloadStatIcons();
