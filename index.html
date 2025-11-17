@@ -451,7 +451,8 @@
                 const calculations = augment.calculations || {};
                 
                 // Find all @word@ patterns that aren't already handled by dataValues
-                const calculationMatches = description.match(/@([^@*]+)@/g);
+                // Use strict pattern to only match valid variable names (alphanumeric + underscore)
+                const calculationMatches = description.match(/@([A-Za-z0-9_]+)@/g);
                 if (!calculationMatches) return description;
                 
                 let processedDescription = description;
@@ -601,30 +602,17 @@
                         varValue = varValue * 100;
                     } else if (multiplier === '*-100') {
                         varValue = varValue * -100;
+                    } else {
+                        // Try to parse the multiplier as a number
+                        const multiplierValue = parseFloat(multiplier.substring(1)); // Remove the '*'
+                        if (!isNaN(multiplierValue)) {
+                            varValue = varValue * multiplierValue;
                         } else {
-                            if (index === 1 && settings['shinyFrame']) {
-                                return ctx.drawImage(image.img, xPosition - 256, yPosition - 256);
-                            } else if (index === 1 && settings['customFrame']) {
-                                // For custom frames, use the same offset as shiny frames for symmetrical images
-                                // This ensures proper centering for 1024x1024 and similar large frames
-                                const imgWidth = image.img.naturalWidth || image.img.width;
-                                const imgHeight = image.img.naturalHeight || image.img.height;
-                                
-                                // For symmetrical images (like 1024x1024), use the same offset as shiny frames
-                                if (imgWidth === imgHeight && imgWidth >= 1024) {
-                                    return ctx.drawImage(image.img, xPosition - 256, yPosition - 256);
-                                } else {
-                                    // For other custom frames, calculate dynamic offset
-                                    const standardWidth = 512;
-                                    const standardHeight = 512; // Use 512 instead of 600 for better centering
-                                    const xOffset = (imgWidth - standardWidth) / 2;
-                                    const yOffset = (imgHeight - standardHeight) / 2;
-                                    return ctx.drawImage(image.img, xPosition - xOffset, yPosition - yOffset);
-                                }
-                            } else {
-                                return ctx.drawImage(image.img, xPosition, yPosition);
-                            }
+                            // Unknown multiplier format - return as-is with placeholder
+                            console.warn(`Unknown multiplier format: ${multiplier} for variable ${varName}`);
+                            return `[${varName}${multiplier}]`;
                         }
+                    }
                 }
                 
                 // Format the value nicely
@@ -1257,31 +1245,38 @@
             description = calculationEngine.processCalculations(description, augment);
 
             // Then handle simple @DataValue@ and @DataValue*multiplier@ placeholders
+            // Use regex to properly match placeholders: @VariableName@ or @VariableName*multiplier@
             while (description.includes("@")) {
-                const startIndex = description.indexOf("@");
-                const endIndex = description.indexOf("@", startIndex + 1);
+                // Match @VariableName@ or @VariableName*number@ (including negative numbers)
+                const match = description.match(/@[A-Za-z0-9_]+(\*-?\d+)?@/);
                 
-                if (endIndex === -1) break; // No closing @, break to avoid infinite loop
+                if (!match) break; // No valid placeholder found, break to avoid infinite loop
                 
-                const varName = description.substring(startIndex, endIndex + 1);
+                const varName = match[0]; // The full matched placeholder like "@HealthReduction*100@"
                 let multiplier = null;
-                let asteriskIndex = null;
 
-                // If it has a multiplier
-                if (varName.includes("*")) {
-                    asteriskIndex = varName.indexOf("*");
-                    multiplier = varName.substring(asteriskIndex, varName.length - 1);
+                // Extract the variable name and multiplier
+                // Remove the @ symbols first
+                const innerContent = varName.substring(1, varName.length - 1); // e.g., "HealthReduction*100"
+                
+                let isolatedVarName;
+                if (innerContent.includes("*")) {
+                    const asteriskIndex = innerContent.indexOf("*");
+                    isolatedVarName = innerContent.substring(0, asteriskIndex); // e.g., "HealthReduction"
+                    multiplier = innerContent.substring(asteriskIndex); // e.g., "*100"
+                } else {
+                    isolatedVarName = innerContent; // e.g., "RoundCountCap"
                 }
-
-                const isolatedVarName = varName.substring(1, asteriskIndex ? asteriskIndex : (varName.length - 1));
 
                 // Check if this is a dataValue
                 if (dataValues.hasOwnProperty(isolatedVarName)) {
                     const processedValue = calculationEngine.processDataValue(isolatedVarName, multiplier, dataValues);
-                    description = description.replaceAll(varName, processedValue);
+                    console.log(`Replacing "${varName}" with "${processedValue}"`); // Debug log
+                    description = description.replace(varName, processedValue);
                 } else {
                     // If not found in dataValues, leave a descriptive placeholder
-                    description = description.replaceAll(varName, `[${isolatedVarName}]`);
+                    console.log(`Placeholder not found in dataValues: "${varName}"`); // Debug log
+                    description = description.replace(varName, `[${isolatedVarName}]`);
                 }
             }
 
