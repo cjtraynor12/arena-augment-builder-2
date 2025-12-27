@@ -2559,7 +2559,9 @@
             { name: "Gold Corners Overlay", filename: "goldcornersoverlay.png", id: 5 },
             { name: "Noxus Item Border", filename: "noxus_item_border_.png", id: 6 },
             { name: "Strawberry Weapon Evolve Border", filename: "strawberry_weapon_evolve_border.png", id: 7 },
-            { name: "Weirding Witch Hat", filename: "weirdingwitchat.png", id: 8 }
+            { name: "Weirding Witch Hat", filename: "weirdingwitchat.png", id: 8 },
+            { name: "Gold Item", filename: "gold_item_modifier.png", id: 9 },
+            { name: "Prismatic Item", filename: "prismatic_item_modifier.png", id: 10 }
         ];
 
         const aram_mayhem_augments = [
@@ -3122,11 +3124,16 @@
             // Add modifier overlay if selected
             if (settings['selectedModifier'] && settings['selectedModifier'] !== 0) {
                 const modifier = itemModifiersDataArray.find(m => m.id === settings['selectedModifier']);
-                if (modifier && modifier.filename) {
+
+                if (modifier.id === 9) { // or whatever your gold modifier ID is
+                    images.push('images/gold_item_modifier.png');
+                } else if (modifier.id === 10) { // or whatever your prismatic modifier ID is
+                    images.push('images/prismatic_item_modifier.png');
+                } else if (modifier && modifier.filename) {
                     const modifierUrl = itemModifiersBaseUrl + modifier.filename;
                     images.push(modifierUrl);
-                    imagePositionOffsets[3] = [modifiedXOffset, modifiedYOffset]; // Same position as icon
                 }
+                imagePositionOffsets[3] = [modifiedXOffset, modifiedYOffset]; // Same position as icon
             }
 
             mergeImages(images, {}, imagePositionOffsets, settings['augmentTitle'], settings['augmentDescription'], settings['iconSize'])
