@@ -73,6 +73,10 @@ body {
     transition: all 0.2s;
 }
 
+#arenaAugmentSearchInput, #aramAugmentSearchInput, #customAugmentSearchInput{
+    width: 60px
+}
+
 .tab-btn:hover {
     background-color: #666;
     color: white;
@@ -91,9 +95,12 @@ body {
 .search-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
     margin-bottom: 15px;
+}
+
+.search-input {
+    flex-grow: 1;
 }
 
 #championSearchInput, #arenaItemSearchInput, #itemSearchInput {
@@ -133,6 +140,7 @@ body {
 }
 
 .augmentButton {
+    position: relative;
     display: flex;
     flex-direction: column;
     text-align: center;
@@ -153,6 +161,20 @@ body {
 
 .augmentButton:hover {
     transform: scale(1.05);
+}
+
+.delete-custom-augment {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    border: none;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+    background-color: unset;
 }
 
 .augmentButton img {
