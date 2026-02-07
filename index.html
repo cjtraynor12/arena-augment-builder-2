@@ -96,8 +96,9 @@
                     <span class="clear-button" onclick="updateArenaAugmentSearch(''); document.getElementById('arenaAugmentSearchInput').value = '';">✖</span>
                     <!-- Tab Navigation -->
                     <div class="tab-navigation">
-                        <button id="arenaAugmentsTabBtn1" class="tab-btn active" onclick="switchAugmentTab('arena')">Arena</button>
-                        <button id="aramAugmentsTabBtn1" class="tab-btn" onclick="switchAugmentTab('aram')">ARAM</button>
+                        <button class="tab-btn arena-tab active" onclick="switchAugmentTab('arena')">Arena</button>
+                        <button class="tab-btn aram-tab" onclick="switchAugmentTab('aram')">ARAM</button>
+                        <button class="tab-btn custom-tab" onclick="switchAugmentTab('custom')">Custom</button>
                     </div>
                 </div>
                 <div class="list" id="arenaAugmentsList"></div>
@@ -110,11 +111,27 @@
                     <span class="clear-button" onclick="updateAramAugmentSearch(''); document.getElementById('aramAugmentSearchInput').value = '';">✖</span>
                     <!-- Tab Navigation -->
                     <div class="tab-navigation">
-                        <button id="arenaAugmentsTabBtn2" class="tab-btn" onclick="switchAugmentTab('arena')">Arena</button>
-                        <button id="aramAugmentsTabBtn2" class="tab-btn active" onclick="switchAugmentTab('aram')">ARAM</button>
+                        <button class="tab-btn arena-tab" onclick="switchAugmentTab('arena')">Arena</button>
+                        <button class="tab-btn aram-tab active" onclick="switchAugmentTab('aram')">ARAM</button>
+                        <button class="tab-btn custom-tab" onclick="switchAugmentTab('custom')">Custom</button>
                     </div>
                 </div>
                 <div class="list" id="aramAugmentsList"></div>
+            </div>
+
+            <!-- Custom Augments Content -->
+            <div id="customAugmentsContent" style="display: none;">
+                <div class="search-container">
+                    <input type="text" id="customAugmentSearchInput" class="search-input" placeholder="Search custom augments..." oninput="updateCustomAugmentSearch(this.value)">
+                    <span class="clear-button" onclick="updateCustomAugmentSearch(''); document.getElementById('customAugmentSearchInput').value = '';">✖</span>
+                    <!-- Tab Navigation -->
+                    <div class="tab-navigation">
+                        <button class="tab-btn arena-tab" onclick="switchAugmentTab('arena')">Arena</button>
+                        <button class="tab-btn aram-tab" onclick="switchAugmentTab('aram')">ARAM</button>
+                        <button class="tab-btn custom-tab active" onclick="switchAugmentTab('custom')">Custom</button>
+                    </div>
+                </div>
+                <div class="list" id="customAugmentsList"></div>
             </div>
         </div>
 
@@ -239,9 +256,15 @@
                         </div>
                     </div>
 
+
                 </div>
 
                 <div class="form-controls-right">
+                    <div class="form-row">
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <button onclick="saveCustomAugment()" title="Save as new augment" style="background-color: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">Save Augment</button>
+                        </div>
+                    </div>
                     <!-- Screen Navigation -->
                     <div class="screen-navigation" style="display: flex; gap: 5px; margin-bottom: 10px;">
                         <button onclick="switchScreen('main')" id="mainScreenBtn" class="screen-btn active" style="flex: 1; padding: 4px 8px; border: 1px solid #ccc; background: #007bff; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;">Main</button>
@@ -329,9 +352,9 @@
                     <span class="clear-button" onclick="updateChampionSearch(''); document.getElementById('championSearchInput').value = '';">✖</span>
                     <!-- Tab Navigation -->
                     <div class="tab-navigation">
-                        <button id="championsTabBtn" class="tab-btn active" onclick="switchIconTab('champions')">Champions</button>
-                        <button id="arenaItemsTabBtn" class="tab-btn" onclick="switchIconTab('arenaItems')">Arena Items</button>
-                        <button id="itemsTabBtn" class="tab-btn" onclick="switchIconTab('items')">Items</button>
+                        <button class="tab-btn champions-tab active" onclick="switchIconTab('champions')">Champions</button>
+                        <button class="tab-btn arena-items-tab" onclick="switchIconTab('arenaItems')">Arena Items</button>
+                        <button class="tab-btn items-tab" onclick="switchIconTab('items')">Items</button>
                     </div>
                 </div>
                 <div class="list" id="championsList"></div>
@@ -344,9 +367,9 @@
                     <span class="clear-button" onclick="updateArenaItemSearch(''); document.getElementById('arenaItemSearchInput').value = '';">✖</span>
                     <!-- Tab Navigation -->
                     <div class="tab-navigation">
-                        <button id="championsTabBtn" class="tab-btn" onclick="switchIconTab('champions')">Champions</button>
-                        <button id="arenaItemsTabBtn" class="tab-btn active" onclick="switchIconTab('arenaItems')">Arena Items</button>
-                        <button id="itemsTabBtn" class="tab-btn" onclick="switchIconTab('items')">Items</button>
+                        <button class="tab-btn champions-tab" onclick="switchIconTab('champions')">Champions</button>
+                        <button class="tab-btn arena-items-tab active" onclick="switchIconTab('arenaItems')">Arena Items</button>
+                        <button class="tab-btn items-tab" onclick="switchIconTab('items')">Items</button>
                     </div>
                 </div>
                 <div class="list" id="arenaItemsList"></div>
@@ -359,9 +382,9 @@
                     <span class="clear-button" onclick="updateItemSearch(''); document.getElementById('itemSearchInput').value = '';">✖</span>
                     <!-- Tab Navigation -->
                     <div class="tab-navigation">
-                        <button id="championsTabBtn" class="tab-btn" onclick="switchIconTab('champions')">Champions</button>
-                        <button id="arenaItemsTabBtn" class="tab-btn" onclick="switchIconTab('arenaItems')">Arena Items</button>
-                        <button id="itemsTabBtn" class="tab-btn active" onclick="switchIconTab('items')">Items</button>
+                        <button class="tab-btn champions-tab" onclick="switchIconTab('champions')">Champions</button>
+                        <button class="tab-btn arena-items-tab" onclick="switchIconTab('arenaItems')">Arena Items</button>
+                        <button class="tab-btn items-tab active" onclick="switchIconTab('items')">Items</button>
                     </div>
                 </div>
                 <div class="list" id="itemsList"></div>
@@ -2546,7 +2569,16 @@
             { name: "Flesh Eater", filename: "7112_flesheater.png", id: 153 },
             { name: "Detonation Orb", filename: "7113_detonationorb.png", id: 154 },
             { name: "Anathema's Chains", filename: "8001_anathemaschains.png", id: 155 },
-            { name: "Abyssal Mask", filename: "8020_abyssalmask.png", id: 156 }
+            { name: "Abyssal Mask", filename: "8020_abyssalmask.png", id: 156 },
+            { name: "Actualizer", filename: "actualizer.png", id: 157 },
+            { name: "Bandle Pipes", filename: "bandlepipes.png", id: 158 },
+            { name: "Bloodletter Curse", filename: "bloodletter_curse.png", id: 159 },
+            { name: "Dusk and Dawn", filename: "dusk_and_dawn.png", id: 160 },
+            { name: "Endless Hunger", filename: "endless_hunger.png", id: 161 },
+            { name: "Fiendhunter Bolts", filename: "fiendhunter_bolts.png", id: 162 },
+            { name: "Hexoptics", filename: "hexoptics.png", id: 163 },
+            { name: "Protoplasm Harness", filename: "protoplasm_harness.png", id: 164 },
+            { name: "Whispering Circlet", filename: "whispering_circlet.png", id: 165 }
         ];
 
         // Item modifiers data
@@ -2564,68 +2596,92 @@
             { name: "Prismatic Item", filename: "prismatic_item_modifier.png", id: 10 }
         ];
 
-        const aram_mayhem_augments = [
-            "adamant",
-            "babykitty",
-            "biggestsnowballever",
-            "cheating",
-            "criticalrhythm",
-            "cruelty",
-            "darksteeltalons",
-            "empyreampromise",
-            "escapeplan",
-            "fetch",
-            "finalform",
-            "flash2",
-            "getexcited",
-            "glasscannon",
-            "goldrend",
-            "hatonahat",
-            "kingme",
-            "laseheal",
-            "mightyshield",
-            "mobiuscoil",
-            "nightstalking",
-            "poltergeist",
-            "proteinshake",
-            "quest_urfschampion",
-            "sneakerhead",
-            "snowballroulette",
-            "snowballupgrade",
-            "spiritualpurification",
-            "swiftandsafe",
-            "thebrutalizer",
-            "upgradecollector",
-            "upgradecutlass",
-            "upgradehubris",
-            "upgradeie",
-            "upgradeimmolate",
-            "upgrademikaelsblessing",
-            "upgradesheen",
-            "upgradezh",
-            "vampired",
-            "windbeneathblade",
-            "zerohour"
-        ];
+        const aram_mayhem_augments = {
+            "adamant": "Adamant",
+            "aram_phenomenalevil": "ARAM Phenomenal Evil",
+            "babykitty": "Baby Kitty",
+            "biggestsnowballever": "Biggest Snowball Ever",
+            "cheating": "Cheating",
+            "crackopenthategg": "Crack Open That Egg",
+            "criticalmissile": "Critical Missile",
+            "criticalrhythm": "Critical Rhythm",
+            "critncast": "Crit 'n Cast",
+            "cruelty": "Cruelty",
+            "darksteeltalons": "Darksteel Talons",
+            "donation": "Donation",
+            "doubletap": "Double Tap",
+            "dropkick": "Dropkick",
+            "empoweredbythefaithful": "Empowered by the Faithful",
+            "empyreampromise": "Empyrean Promise",
+            "escapeplan": "Escape Plan",
+            "fetch": "Fetch",
+            "finalform": "Final Form",
+            "flash2": "Flash 2",
+            "getexcited": "Get Excited",
+            "glasscannon": "Glass Cannon",
+            "goldensnowball": "Golden Snowball",
+            "goldrend": "Goldrend",
+            "grandmaschilioil": "Grandma's Chili Oil",
+            "growthspurt": "Growth Spurt",
+            "handofbaron": "Hand of Baron",
+            "hatonahat": "Hat on a Hat",
+            "infiniterecursion": "Infinite Recursion",
+            "juiced": "Juiced",
+            "killsecure": "Kill Secure",
+            "kingme": "King Me",
+            "laseheal": "Lase Heal",
+            "littledevil": "Little Devil",
+            "mightyshield": "Mighty Shield",
+            "missingping": "Missing Ping",
+            "mobiuscoil": "Mobius Coil",
+            "nightstalking": "Night Stalking",
+            "pinballsnowball": "Pinball Snowball",
+            "poltergeist": "Poltergeist",
+            "poroblast": "Poro Blast",
+            "poroking": "Poro King",
+            "promqueen": "Prom Queen",
+            "proteinshake": "Protein Shake",
+            "puristcaster": "Purist Caster",
+            "quest_urfschampion": "Quest: Urf's Champion",
+            "quest_voidimmolation": "Quest: Void Immolation",
+            "redenvelopes": "Red Envelopes",
+            "shrinkengine": "Shrink Engine",
+            "sneakerhead": "Sneakerhead",
+            "snowballupgrade": "Snowball Upgrade",
+            "sonata": "Sonata",
+            "souleater": "Soul Eater",
+            "speeddemon": "Speed Demon",
+            "spiritualpurification": "Spiritual Purification",
+            "stuckinherewithme": "Stuck in Here with Me",
+            "swiftandsafe": "Swift and Safe",
+            "thebrutalizer": "The Brutalizer",
+            "twinfire": "Twin Fire",
+            "upgradecollector": "Upgrade: Collector",
+            "upgradehubris": "Upgrade: Hubris",
+            "upgradeie": "Upgrade: IE",
+            "upgradeimmolate": "Upgrade: Immolate",
+            "upgrademikaelsblessing": "Upgrade: Mikael's Blessing",
+            "upgradesheen": "Upgrade: Sheen",
+            "upgradezh": "Upgrade: ZH",
+            "vampired": "Vampired",
+            "voidrift": "Void Rift",
+            "watchoutgrapefruit": "Watch Out Grapefruit",
+            "weightedpopoffs": "Weighted Pop-offs",
+            "windbeneathblade": "Wind Beneath Blade",
+            "youspinmerightround": "You Spin Me Right Round",
+            "zealot": "Zealot",
+            "zerohour": "Zero Hour"
+        };
 
         // Convert ARAM augment names to proper data structure
         let aramAugmentsData = null;
 
         function createAramAugmentsData() {
-            aramAugmentsData = aram_mayhem_augments.map((augmentName, index) => {
-                // Create display name by capitalizing and formatting
-                const displayName = augmentName
-                    .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
-                    .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
-                    .replace(/upgrade/gi, 'Upgrade ') // Add space after "upgrade"
-                    .replace(/quest_/gi, 'Quest: ') // Replace quest_ with "Quest: "
-                    .replace(/\s+/g, ' ') // Clean up multiple spaces
-                    .trim();
-
+            aramAugmentsData = Object.entries(aram_mayhem_augments).map(([filename, displayName], index) => {
                 return {
                     id: index + 1,
                     name: displayName,
-                    filename: augmentName,
+                    filename: filename,
                     element: null
                 };
             }).sort(compareNames);
@@ -2715,8 +2771,10 @@
         let championSearch = "";
         let itemSearch = "";
         let arenaItemSearch = "";
+        let customAugmentSearch = "";
         let currentIconTab = "champions";
         let currentAugmentTab = "arena";
+        let customAugmentsData = [];
 
         function updateAugmentSearch(value) {
             augmentSearch = value;
@@ -2731,6 +2789,11 @@
         function updateAramAugmentSearch(value) {
             aramAugmentSearch = value;
             filterAramAugments();
+        }
+
+        function updateCustomAugmentSearch(value) {
+            customAugmentSearch = value;
+            filterCustomAugments();
         }
 
         function updateChampionSearch(value) {
@@ -2750,55 +2813,43 @@
 
         function switchAugmentTab(tab) {
             currentAugmentTab = tab;
-            
+
             // Update tab button states
-            const arenaAugmentsTabBtns = document.querySelectorAll('[id^="arenaAugmentsTabBtn"]');
-            const aramAugmentsTabBtns = document.querySelectorAll('[id^="aramAugmentsTabBtn"]');
-            
-            arenaAugmentsTabBtns.forEach(btn => {
-                btn.classList.toggle('active', tab === 'arena');
-            });
-            aramAugmentsTabBtns.forEach(btn => {
-                btn.classList.toggle('active', tab === 'aram');
-            });
-            
+            document.querySelectorAll('.arena-tab').forEach(btn => btn.classList.toggle('active', tab === 'arena'));
+            document.querySelectorAll('.aram-tab').forEach(btn => btn.classList.toggle('active', tab === 'aram'));
+            document.querySelectorAll('.custom-tab').forEach(btn => btn.classList.toggle('active', tab === 'custom'));
+
             // Show/hide appropriate content
             document.getElementById('arenaAugmentsContent').style.display = tab === 'arena' ? 'block' : 'none';
             document.getElementById('aramAugmentsContent').style.display = tab === 'aram' ? 'block' : 'none';
-            
+            document.getElementById('customAugmentsContent').style.display = tab === 'custom' ? 'block' : 'none';
+
             // Clear search when switching tabs
             if (tab === 'arena') {
                 document.getElementById('arenaAugmentSearchInput').value = '';
                 updateArenaAugmentSearch('');
-            } else {
+            } else if (tab === 'aram') {
                 document.getElementById('aramAugmentSearchInput').value = '';
                 updateAramAugmentSearch('');
+            } else if (tab === 'custom') {
+                document.getElementById('customAugmentSearchInput').value = '';
+                updateCustomAugmentSearch('');
             }
         }
 
         function switchIconTab(tab) {
             currentIconTab = tab;
-            
+
             // Update tab button states
-            const championsTabBtns = document.querySelectorAll('#championsTabBtn');
-            const arenaItemsTabBtns = document.querySelectorAll('#arenaItemsTabBtn');
-            const itemsTabBtns = document.querySelectorAll('#itemsTabBtn');
-            
-            championsTabBtns.forEach(btn => {
-                btn.classList.toggle('active', tab === 'champions');
-            });
-            arenaItemsTabBtns.forEach(btn => {
-                btn.classList.toggle('active', tab === 'arenaItems');
-            });
-            itemsTabBtns.forEach(btn => {
-                btn.classList.toggle('active', tab === 'items');
-            });
-            
+            document.querySelectorAll('.champions-tab').forEach(btn => btn.classList.toggle('active', tab === 'champions'));
+            document.querySelectorAll('.arena-items-tab').forEach(btn => btn.classList.toggle('active', tab === 'arenaItems'));
+            document.querySelectorAll('.items-tab').forEach(btn => btn.classList.toggle('active', tab === 'items'));
+
             // Show/hide appropriate content
             document.getElementById('championsContent').style.display = tab === 'champions' ? 'block' : 'none';
             document.getElementById('arenaItemsContent').style.display = tab === 'arenaItems' ? 'block' : 'none';
             document.getElementById('itemsContent').style.display = tab === 'items' ? 'block' : 'none';
-            
+
             // Clear search when switching tabs
             if (tab === 'champions') {
                 document.getElementById('championSearchInput').value = '';
@@ -2895,6 +2946,15 @@
             }
         }
 
+        function filterCustomAugments() {
+            const customAugmentsList = document.getElementById("customAugmentsList");
+            customAugmentsList.innerHTML = "";
+            if (customAugmentsData) {
+                customAugmentsData.filter((e) => (e.augmentTitle.toLowerCase().includes(customAugmentSearch.toLowerCase()) > 0))
+                    .forEach((e) => customAugmentsList.appendChild(e.element));
+            }
+        }
+
         function filterChampions() {
             const championsList = document.getElementById("championsList");
             championsList.innerHTML = "";
@@ -2908,6 +2968,7 @@
             settings['selectedAugment'] = arenaJsonData.filter((e) => e['id'] === id)[0];
             settings['selectedChampion'] = null;
             settings['customImage'] = null;
+            settings['selectedCustomAugment'] = null;
 
             const rarity = settings['selectedAugment']['rarity'];
             switch (rarity) {
@@ -2938,7 +2999,112 @@
             settings['selectedAugment'] = null;
             settings['selectedItem'] = null;
             settings['customImage'] = null;
+            settings['selectedCustomAugment'] = null;
             mergeAugmentImages();
+        }
+
+        function createCustomAugmentButton(augmentData, index) {
+            const container = document.createElement("div");
+            container.setAttribute("class", "augmentButton");
+            container.setAttribute("onclick", `setSelectedCustomAugment(${index})`);
+
+            const augmentName = document.createElement("span");
+            augmentName.innerText = augmentData.augmentTitle;
+            container.appendChild(augmentName);
+
+            const image = document.createElement("img");
+            let iconImage;
+            if (augmentData.customImage) {
+                iconImage = augmentData.customImage;
+            } else if (augmentData.selectedAugment) {
+                iconImage = communityDragonBaseUrl + augmentData.selectedAugment.iconLarge;
+            } else if (augmentData.selectedChampion) {
+                iconImage = baseSquarePortraitPath + augmentData.selectedChampion.id + ".png";
+            } else if (augmentData.selectedArenaItem) {
+                iconImage = arenaItemIconsBaseUrl + augmentData.selectedArenaItem.filename;
+            } else if (augmentData.selectedItem) {
+                iconImage = itemIconsBaseUrl + augmentData.selectedItem.filename;
+            } else if (augmentData.selectedAramAugment) {
+                iconImage = aramMayhemAugmentsBaseUrl + augmentData.selectedAramAugment + "_large.png";
+            }
+            image.setAttribute("src", iconImage);
+            container.appendChild(image);
+
+            const deleteButton = document.createElement("button");
+            deleteButton.innerText = "🗑️";
+            deleteButton.setAttribute("class", "delete-custom-augment");
+            deleteButton.setAttribute("onclick", `event.stopPropagation(); deleteCustomAugment(${index})`);
+            container.appendChild(deleteButton);
+
+            return container;
+        }
+
+        function displayCustomAugments() {
+            customAugmentsData = loadFromLocalStorage('customAugments', []);
+            const customAugmentsList = document.getElementById("customAugmentsList");
+            customAugmentsList.innerHTML = "";
+            customAugmentsData.forEach((augmentData, index) => {
+                augmentData.element = createCustomAugmentButton(augmentData, index);
+                customAugmentsList.appendChild(augmentData.element);
+            });
+        }
+
+        function setSelectedCustomAugment(index) {
+            const selected = customAugmentsData[index];
+            Object.keys(selected).forEach(key => {
+                settings[key] = selected[key];
+            });
+
+            // Update UI elements
+            document.getElementById('titleInput').value = settings.augmentTitle;
+            document.getElementById('descriptionInput').value = settings.augmentDescription;
+            document.getElementById('titleFontInput').value = settings.titleFont;
+            document.getElementById('descriptionFontInput').value = settings.descriptionFont;
+            document.getElementById('iconXOffset').value = settings.iconXOffset;
+            document.getElementById('iconYOffset').value = settings.iconYOffset;
+            document.getElementById('iconSize').value = settings.iconSize;
+            document.getElementById('titleYOffset').value = settings.titleYOffset;
+            document.getElementById('descriptionYOffset').value = settings.descriptionYOffset;
+            document.getElementById('titleLineHeight').value = settings.titleLineHeight;
+            document.getElementById('descriptionLineHeight').value = settings.descriptionLineHeight;
+            document.getElementById('customFrame').value = settings.selectedFrame.replace('.png', '');
+            document.getElementById('languageSelect').value = settings.language;
+            document.getElementById('itemModifierSelect').value = settings.selectedModifier;
+
+            // Update slider outputs
+            document.querySelector('output[for="iconXOffset"]').value = settings.iconXOffset;
+            document.querySelector('output[for="iconSize"]').value = settings.iconSize;
+            document.querySelector('output[for="titleLineHeight"]').value = settings.titleLineHeight;
+            document.querySelector('output[for="descriptionLineHeight"]').value = settings.descriptionLineHeight;
+
+            mergeAugmentImages();
+        }
+
+        function saveCustomAugment() {
+            if (!settings.augmentTitle) {
+                showToast("Title cannot be empty.", true);
+                return;
+            }
+            let customAugments = loadFromLocalStorage('customAugments', []);
+            const newAugment = { ...settings };
+            // We don't want to save the element in the settings
+            delete newAugment.element;
+            customAugments.push(newAugment);
+            saveToLocalStorage('customAugments', customAugments);
+            displayCustomAugments();
+            filterCustomAugments();
+            showToast("Augment saved!");
+        }
+
+        function deleteCustomAugment(index) {
+            if (confirm("Are you sure you want to delete this augment?")) {
+                let customAugments = loadFromLocalStorage('customAugments', []);
+                customAugments.splice(index, 1);
+                saveToLocalStorage('customAugments', customAugments);
+                displayCustomAugments();
+                filterCustomAugments();
+                showToast("Augment deleted.");
+            }
         }
 
         function createItemButton(item) {
@@ -2980,6 +3146,7 @@
             settings['selectedChampion'] = null;
             settings['selectedArenaItem'] = null;
             settings['customImage'] = null;
+            settings['selectedCustomAugment'] = null;
             settings['augmentTitle'] = settings['selectedItem'].name;
             document.getElementById('titleInput').value = settings['augmentTitle'];
 
@@ -3025,7 +3192,8 @@
             settings['selectedChampion'] = null;
             settings['selectedItem'] = null;
             settings['customImage'] = null;
-            
+            settings['selectedCustomAugment'] = null;
+
             // Set the title
             settings['augmentTitle'] = settings['selectedArenaItem'].name;
             document.getElementById('titleInput').value = settings['augmentTitle'];
@@ -3430,6 +3598,8 @@
             displayArenaItems(arenaItemsDataArray);
             filterArenaItems();
             populateModifierDropdown();
+            displayCustomAugments();
+            filterCustomAugments();
             
             // Initialize ARAM augments
             displayAramAugments();
