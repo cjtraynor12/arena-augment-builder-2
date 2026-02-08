@@ -649,6 +649,74 @@
         // Initialize calculation engine
         const calculationEngine = new CalculationEngine();
 
+        // ===== INDEXEDDB MODULE =====
+        const dbPromise = indexedDB.open('AugmentImageStore', 1);
+
+        dbPromise.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('images')) {
+                db.createObjectStore('images', { keyPath: 'id' });
+            }
+        };
+
+        function getDb() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('AugmentImageStore', 1);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function saveImageToDb(id, blob) {
+            const db = await getDb();
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+            await store.put({ id, blob });
+        }
+
+        async function getImageFromDb(id) {
+            const db = await getDb();
+            const transaction = db.transaction(['images'], 'readonly');
+            const store = transaction.objectStore('images');
+            const result = await new Promise((resolve) => {
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(null); // Resolve with null on error
+            });
+            return result ? result.blob : null;
+        }
+
+        async function deleteImageFromDb(id) {
+            const db = await getDb();
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+            await store.delete(id);
+        }
+
+        function base64ToBlob(base64, contentType = 'image/png') {
+            const byteCharacters = atob(base64.split(',')[1]);
+            const byteArrays = [];
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            return new Blob(byteArrays, { type: contentType });
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
         // ===== LOCAL STORAGE MODULE =====
         function saveToLocalStorage(key, value) {
             try {
@@ -958,7 +1026,7 @@
             shield: '#70b3b4',
             status: '#b29cc0',
             keywordMajor: '#F0E6D2',
-            keywordStealth: '#4B0082',
+            keywordStealth: '#966db0',
             
             // Speed and combat stats
             speed: '#00FF7F',
@@ -2950,8 +3018,13 @@
             const customAugmentsList = document.getElementById("customAugmentsList");
             customAugmentsList.innerHTML = "";
             if (customAugmentsData) {
-                customAugmentsData.filter((e) => (e.augmentTitle.toLowerCase().includes(customAugmentSearch.toLowerCase()) > 0))
-                    .forEach((e) => customAugmentsList.appendChild(e.element));
+                customAugmentsData
+                    .filter((e) => e.augmentTitle.toLowerCase().includes(customAugmentSearch.toLowerCase()))
+                    .forEach((e) => {
+                        if (e.element) { // Ensure element exists before appending
+                            customAugmentsList.appendChild(e.element);
+                        }
+                    });
             }
         }
 
@@ -3003,7 +3076,7 @@
             mergeAugmentImages();
         }
 
-        function createCustomAugmentButton(augmentData, index) {
+        async function createCustomAugmentButton(augmentData, index) {
             const container = document.createElement("div");
             container.setAttribute("class", "augmentButton");
             container.setAttribute("onclick", `setSelectedCustomAugment(${index})`);
@@ -3014,7 +3087,18 @@
 
             const image = document.createElement("img");
             let iconImage;
-            if (augmentData.customImage) {
+
+            if (augmentData.imageId) {
+                try {
+                    const imageBlob = await getImageFromDb(augmentData.imageId);
+                    if (imageBlob) {
+                        iconImage = await blobToBase64(imageBlob);
+                    }
+                } catch (error) {
+                    console.error('Failed to load image from IndexedDB:', error);
+                }
+            } else if (augmentData.customImage) {
+                // Fallback for older augments still using base64 in localStorage
                 iconImage = augmentData.customImage;
             } else if (augmentData.selectedAugment) {
                 iconImage = communityDragonBaseUrl + augmentData.selectedAugment.iconLarge;
@@ -3027,7 +3111,10 @@
             } else if (augmentData.selectedAramAugment) {
                 iconImage = aramMayhemAugmentsBaseUrl + augmentData.selectedAramAugment + "_large.png";
             }
-            image.setAttribute("src", iconImage);
+            
+            if (iconImage) {
+                image.setAttribute("src", iconImage);
+            }
             container.appendChild(image);
 
             const deleteButton = document.createElement("button");
@@ -3039,21 +3126,38 @@
             return container;
         }
 
-        function displayCustomAugments() {
+        async function displayCustomAugments() {
             customAugmentsData = loadFromLocalStorage('customAugments', []);
-            const customAugmentsList = document.getElementById("customAugmentsList");
-            customAugmentsList.innerHTML = "";
-            customAugmentsData.forEach((augmentData, index) => {
-                augmentData.element = createCustomAugmentButton(augmentData, index);
-                customAugmentsList.appendChild(augmentData.element);
-            });
+            
+            for (let i = 0; i < customAugmentsData.length; i++) {
+                const augmentData = customAugmentsData[i];
+                // Only create the element, don't append it here
+                augmentData.element = await createCustomAugmentButton(augmentData, i);
+            }
         }
 
-        function setSelectedCustomAugment(index) {
+        async function setSelectedCustomAugment(index) {
             const selected = customAugmentsData[index];
+            
+            // Reset settings before applying new ones
+            settings['customImage'] = null;
+
+            // Apply all settings from the selected augment
             Object.keys(selected).forEach(key => {
                 settings[key] = selected[key];
             });
+
+            // Handle loading image from IndexedDB
+            if (selected.imageId) {
+                try {
+                    const imageBlob = await getImageFromDb(selected.imageId);
+                    if (imageBlob) {
+                        settings.customImage = await blobToBase64(imageBlob);
+                    }
+                } catch (error) {
+                    console.error('Failed to load image for selected augment:', error);
+                }
+            }
 
             // Update UI elements
             document.getElementById('titleInput').value = settings.augmentTitle;
@@ -3080,29 +3184,66 @@
             mergeAugmentImages();
         }
 
-        function saveCustomAugment() {
+        async function saveCustomAugment() {
             if (!settings.augmentTitle) {
                 showToast("Title cannot be empty.", true);
                 return;
             }
+
             let customAugments = loadFromLocalStorage('customAugments', []);
             const newAugment = { ...settings };
+
+            // Handle custom image saving to IndexedDB
+            if (newAugment.customImage && newAugment.customImage.startsWith('data:image')) {
+                try {
+                    const imageId = `custom_augment_${Date.now()}`;
+                    const imageBlob = base64ToBlob(newAugment.customImage);
+                    await saveImageToDb(imageId, imageBlob);
+                    
+                    newAugment.imageId = imageId; // Store reference to the image
+                    delete newAugment.customImage; // Remove base64 from localStorage
+                    
+                } catch (error) {
+                    console.error('Failed to save image to IndexedDB:', error);
+                    showToast('Error saving custom image.', true);
+                    return; // Stop if image saving fails
+                }
+            }
+
             // We don't want to save the element in the settings
             delete newAugment.element;
+            
             customAugments.push(newAugment);
             saveToLocalStorage('customAugments', customAugments);
-            displayCustomAugments();
+            
+            // Refresh the display
+            await displayCustomAugments();
             filterCustomAugments();
+            
             showToast("Augment saved!");
         }
 
-        function deleteCustomAugment(index) {
+        async function deleteCustomAugment(index) {
             if (confirm("Are you sure you want to delete this augment?")) {
                 let customAugments = loadFromLocalStorage('customAugments', []);
+                const augmentToDelete = customAugments[index];
+
+                // If the augment has an image in IndexedDB, delete it
+                if (augmentToDelete && augmentToDelete.imageId) {
+                    try {
+                        await deleteImageFromDb(augmentToDelete.imageId);
+                    } catch (error) {
+                        console.error('Failed to delete image from IndexedDB:', error);
+                        // We can still proceed with deleting the augment from localStorage
+                    }
+                }
+
                 customAugments.splice(index, 1);
                 saveToLocalStorage('customAugments', customAugments);
-                displayCustomAugments();
+                
+                await displayCustomAugments();
                 filterCustomAugments();
+                
                 showToast("Augment deleted.");
             }
         }
@@ -3598,7 +3739,9 @@
             displayArenaItems(arenaItemsDataArray);
             filterArenaItems();
             populateModifierDropdown();
-            displayCustomAugments();
+            
+            // Await the creation of custom augment elements
+            await displayCustomAugments();
             filterCustomAugments();
             
             // Initialize ARAM augments
