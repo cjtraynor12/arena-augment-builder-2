@@ -3615,6 +3615,13 @@
 
         function updateCanvasVariable(value, variable) {
             settings[variable] = value;
+            const slider = document.getElementById(variable);
+            if (slider) {
+                const output = slider.nextElementSibling;
+                if (output && output.tagName === 'OUTPUT') {
+                    output.value = value;
+                }
+            }
             mergeAugmentImages();
         }
 
