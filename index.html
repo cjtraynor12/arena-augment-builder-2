@@ -224,16 +224,7 @@
 
             <div class="form-controls">
                 <div class="form-controls-left">
-                    <div class="form-row">
-                        <label for="titleInput">Title</label>
-                        <textarea name="titleInput" id="titleInput" placeholder="Enter title..." oninput="updateCanvasVariable(this.value, 'augmentTitle')"></textarea>
-                    </div>
-
-                    <div class="form-row">
-                        <label for="titleFontInput">Title Font</label>
-                        <input name="titleFontInput" id="titleFontInput" placeholder="e.g., bold 24px LolBeautfortBold" oninput="updateCanvasVariable(this.value, 'titleFont')"/>
-                    </div>
-
+                    
                     <div class="form-row">
                         <label for="descriptionInput">Description</label>
                         <textarea name="descriptionInput" id="descriptionInput" placeholder="Enter description..." oninput="updateCanvasVariable(this.value, 'augmentDescription')"></textarea>
@@ -242,6 +233,16 @@
                     <div class="form-row">
                         <label for="descriptionFontInput">Description Font</label>
                         <input name="descriptionFontInput" id="descriptionFontInput" placeholder="e.g., 14px LolBeautfort" oninput="updateCanvasVariable(this.value, 'descriptionFont')"/>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="titleInput">Title</label>
+                        <textarea name="titleInput" id="titleInput" placeholder="Enter title..." oninput="updateCanvasVariable(this.value, 'augmentTitle')"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="titleFontInput">Title Font</label>
+                        <input name="titleFontInput" id="titleFontInput" placeholder="e.g., bold 24px LolBeautfortBold" oninput="updateCanvasVariable(this.value, 'titleFont')"/>
                     </div>
 
                     <div class="form-row">
@@ -315,6 +316,16 @@
                         <div class="form-row">
                             <label for="descriptionMaxWidth">Description Max Width</label>
                             <input type="number" id="descriptionMaxWidth" value="220" oninput="updateCanvasVariable(parseInt(this.value), 'descriptionMaxWidth')" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="refIconScale">Ref Icon Scale</label>
+                            <input type="number" id="refIconScale" step="0.5" min="0.5" max="10" value="2" oninput="updateCanvasVariable(parseFloat(this.value), 'refIconScale')" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+
+                        <div class="form-row" style="flex-direction: row; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="leftAlignDesc" onchange="updateCanvasVariable(this.checked, 'leftAlignDesc')" style="width: auto; margin: 0;">
+                            <label for="leftAlignDesc" style="margin: 0; cursor: pointer;">Left Align Description</label>
                         </div>
                     </div>
 
@@ -778,7 +789,9 @@
                 titleFont: loadFromLocalStorage('titleFont', 'bold 24px LolBeautfortBold'),
                 descriptionFont: loadFromLocalStorage('descriptionFont', '14px LolBeautfort'),
                 customFrame: loadFromLocalStorage('customFrame', 'augmentcard_frame_prismatic'),
-                language: loadFromLocalStorage('language', 'en_us')
+                language: loadFromLocalStorage('language', 'en_us'),
+                refIconScale: loadFromLocalStorage('refIconScale', 2),
+                leftAlignDesc: loadFromLocalStorage('leftAlignDesc', false)
             };
 
             // Apply saved settings to elements and settings object
@@ -790,8 +803,12 @@
                 const element = document.getElementById(key === 'titleFont' ? 'titleFontInput' : 
                                                       key === 'descriptionFont' ? 'descriptionFontInput' : key);
                 if (element) {
-                    element.value = value;
-                    
+                    if (element.type === 'checkbox') {
+                        element.checked = value;
+                    } else {
+                        element.value = value;
+                    }
+
                     // Update output elements for sliders
                     const output = document.querySelector(`output[for="${key}"]`);
                     if (output) {
@@ -920,7 +937,7 @@
                             .then(numberOfTitleLines => {
                                 ctx.font = settings['descriptionFont'];
                                 const descriptionMaxWidth = settings['descriptionMaxWidth'] || 220;
-                                return wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight']);
+                                return wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight'], true);
                             })
                             .then(() => {
                                 return canvas.toDataURL(options.format, options.quality);
@@ -931,10 +948,10 @@
                 }));
         });
 
-        async function wrapText(context, text, x, y, maxWidth, lineHeight = 16) {
+        async function wrapText(context, text, x, y, maxWidth, lineHeight = 16, isDescription = false) {
             // Preprocess text to convert HTML-style font tags to compact format
             const preprocessedText = preprocessFontTags(text);
-            
+
             const linebreakLines = preprocessedText.split("\n");
             const finalLines = [];
             linebreakLines.forEach((line) => finalLines.push(...getLines(context, line, maxWidth)))
@@ -942,7 +959,7 @@
             let inRulesSection = false;
             for (let index = 0; index < finalLines.length; index++) {
                 const line = finalLines[index];
-                inRulesSection = await writeCharacters(context, line, x, (y + (index * lineHeight)), inRulesSection);
+                inRulesSection = await writeCharacters(context, line, x, (y + (index * lineHeight)), inRulesSection, isDescription);
             }
             return finalLines.length;
         }
@@ -1043,7 +1060,12 @@
             
             // Resistances (fallback colors)
             armor: "#C89B3C",
-            magicresistance: "#9966CC"
+            magicresistance: "#9966CC",
+
+            // Tier colors (for inline augment/item references)
+            silver: "#B0B0B0",
+            gold: "#C9AA71",
+            prismatic: "#E4B4FF"
         }
 
         // Image cache for inline images
@@ -1074,7 +1096,7 @@
             });
         }
 
-        function writeCharacters(ctx, str, x, y, inRulesSection) {
+        function writeCharacters(ctx, str, x, y, inRulesSection, isDescription = false) {
             return new Promise((resolve) => {
                 const strNoTags = str.replaceAll(/(<([^>]+)>)/gi, "");
                 
@@ -1095,17 +1117,21 @@
                 totalWidth += imgMatches.length * (imageSize + letterSpacing);
                 
                 let xCenterAdjustment = totalWidth / 2;
-                
-                // Apply manual adjustments based on font size (rough detection)
-                if (fontSize > 20) {
-                    // This is likely a title
+
+                if (!isDescription) {
                     xCenterAdjustment += titleCenterAdjustment;
                 } else {
-                    // This is likely description text
                     xCenterAdjustment += descriptionCenterAdjustment;
                 }
 
-                let currentX = x - xCenterAdjustment;
+                let currentX;
+                if (isDescription && settings['leftAlignDesc']) {
+                    // Left align: start at x minus half the max description width
+                    const descMaxWidth = settings['descriptionMaxWidth'] || 220;
+                    currentX = x - descMaxWidth / 2;
+                } else {
+                    currentX = x - xCenterAdjustment;
+                }
                 let pendingImages = [];
 
                 for(let i = 0; i <= str.length; ++i) {
@@ -1121,19 +1147,28 @@
                             // Handle custom inline image tags - check for imgKeyword format
                             if (tagContent.toLowerCase().startsWith('img')) {
                                 const keyword = tagContent.substring(3); // Remove 'img' prefix
-                                const imageUrl = getStatIconUrl(keyword);
-                                
+                                let imageUrl;
                                 if (imageKeywordMap[keyword]) {
-                                    const imageSize = Math.max(12, fontSize - 2);
-                                    
+                                    imageUrl = getStatIconUrl(keyword);
+                                } else if (inlineImageUrlMap[keyword]) {
+                                    imageUrl = inlineImageUrlMap[keyword];
+                                }
+
+                                if (imageUrl) {
+                                    const baseImageSize = Math.max(12, fontSize - 2);
+                                    const refMultiplier = inlineImageUrlMap[keyword] ? (settings['refIconScale'] || 2) : 1;
+                                    const imageSize = Math.round(baseImageSize * refMultiplier);
+
                                     console.log('Processing custom image tag:', tagContent, 'keyword:', keyword, 'url:', imageUrl); // Debug log
-                                    
+
                                     // Check cache first
                                     if (imageCache.has(imageUrl)) {
                                         const cachedImg = imageCache.get(imageUrl);
                                         if (cachedImg.complete) {
-                                            // Draw cached image
-                                            const imageY = y - imageSize + 2; // Align with text baseline
+                                            // Stat icons: bottom-align near baseline (original). Reference icons: center on text midpoint.
+                                            const imageY = inlineImageUrlMap[keyword]
+                                                ? y - fontSize * 0.35 - imageSize / 2
+                                                : y - imageSize + 2;
                                             ctx.drawImage(cachedImg, currentX, imageY, imageSize, imageSize);
                                             currentX += imageSize + letterSpacing;
                                             console.log('Drew cached image at', currentX, imageY); // Debug log
@@ -1306,6 +1341,29 @@
             'scaleSV': 'scalesv.png',
             'scaleTenacity': 'scaletenacity.png'
         };
+
+        // Map for inline augment/item images inserted via the "+" button
+        const inlineImageUrlMap = {};
+
+        function sanitizeKeyword(name) {
+            return name.replace(/[^a-zA-Z0-9]/g, '');
+        }
+
+        function getTierKeyword(rarity, preferredFrame) {
+            if (rarity !== undefined && rarity !== null) {
+                switch (rarity) {
+                    case 0: return 'silver';
+                    case 1: return 'gold';
+                    case 2: return 'prismatic';
+                    default: return 'gold';
+                }
+            }
+            if (preferredFrame) {
+                if (preferredFrame.includes('prismatic')) return 'prismatic';
+                if (preferredFrame.includes('silver')) return 'silver';
+            }
+            return 'gold';
+        }
 
         // Helper function to get full URL for a stat icon
         function getStatIconUrl(keyword) {
@@ -1646,6 +1704,27 @@
             updateCanvasVariable(newText, 'augmentDescription');
         }
 
+        function insertAugmentReference(name, iconUrl, tierKeyword) {
+            const textarea = document.getElementById('descriptionInput');
+            let insertText = '';
+            if (iconUrl) {
+                const keyword = sanitizeKeyword(name);
+                inlineImageUrlMap[keyword] = iconUrl;
+                insertText = `<img${keyword}><${tierKeyword}>${name}</${tierKeyword}>\n`;
+            } else {
+                insertText = `<${tierKeyword}>${name}</${tierKeyword}>\n`;
+            }
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const newText = text.substring(0, start) + insertText + text.substring(end);
+            textarea.value = newText;
+            const newCursorPos = start + insertText.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+            updateCanvasVariable(newText, 'augmentDescription');
+        }
+
         // ===== COLOR TABLE MANAGEMENT =====
         let currentColorTable = { ...colorTable }; // Copy of the original color table
 
@@ -1654,6 +1733,12 @@
                 const stored = localStorage.getItem('augmentBuilder_colorTable');
                 if (stored) {
                     currentColorTable = JSON.parse(stored);
+                    // Merge in any new default keys that don't exist in the stored table
+                    for (const key in colorTable) {
+                        if (!(key in currentColorTable)) {
+                            currentColorTable[key] = colorTable[key];
+                        }
+                    }
                     // Update the global colorTable reference
                     Object.keys(colorTable).forEach(key => delete colorTable[key]);
                     Object.assign(colorTable, currentColorTable);
@@ -1720,9 +1805,14 @@
                     
                     // Resistances (fallback colors)
                     armor: "#C89B3C",
-                    magicresistance: "#9966CC"
+                    magicresistance: "#9966CC",
+
+                    // Tier colors (for inline augment/item references)
+                    silver: "#B0B0B0",
+                    gold: "#C9AA71",
+                    prismatic: "#E4B4FF"
                 };
-                
+
                 // Update global reference
                 Object.keys(colorTable).forEach(key => delete colorTable[key]);
                 Object.assign(colorTable, currentColorTable);
@@ -2768,6 +2858,18 @@
             image.setAttribute("src", aramMayhemAugmentsBaseUrl + augmentData['filename'] + "_large.png");
             container.appendChild(image);
 
+            const insertBtn = document.createElement("button");
+            insertBtn.innerText = "+";
+            insertBtn.setAttribute("class", "insert-reference-btn");
+            insertBtn.title = "Insert as inline reference";
+            insertBtn.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertAugmentReference(augmentData['name'], aramMayhemAugmentsBaseUrl + augmentData['filename'] + '_large.png', 'prismatic');
+            };
+            insertBtn.onclick = (e) => e.stopPropagation();
+            container.appendChild(insertBtn);
+
             return container;
         }
 
@@ -2954,6 +3056,18 @@
             image.setAttribute("src", communityDragonBaseUrl + augmentData['iconLarge'])
             container.appendChild(image);
 
+            const insertBtn = document.createElement("button");
+            insertBtn.innerText = "+";
+            insertBtn.setAttribute("class", "insert-reference-btn");
+            insertBtn.title = "Insert as inline reference";
+            insertBtn.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertAugmentReference(augmentData['name'], communityDragonBaseUrl + augmentData['iconLarge'], getTierKeyword(augmentData['rarity']));
+            };
+            insertBtn.onclick = (e) => e.stopPropagation();
+            container.appendChild(insertBtn);
+
             return container;
         }
 
@@ -3117,6 +3231,32 @@
             }
             container.appendChild(image);
 
+            const insertBtn = document.createElement("button");
+            insertBtn.innerText = "+";
+            insertBtn.setAttribute("class", "insert-reference-btn");
+            insertBtn.title = "Insert as inline reference";
+            insertBtn.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                let refIconUrl = '';
+                if (augmentData.selectedAugment) {
+                    refIconUrl = communityDragonBaseUrl + augmentData.selectedAugment.iconLarge;
+                } else if (augmentData.selectedArenaItem) {
+                    refIconUrl = arenaItemIconsBaseUrl + augmentData.selectedArenaItem.filename;
+                } else if (augmentData.selectedItem) {
+                    refIconUrl = itemIconsBaseUrl + augmentData.selectedItem.filename;
+                } else if (augmentData.selectedAramAugment) {
+                    refIconUrl = aramMayhemAugmentsBaseUrl + augmentData.selectedAramAugment + '_large.png';
+                }
+                let tierColor = 'gold';
+                const frame = augmentData.selectedFrame || '';
+                if (frame.includes('prismatic')) tierColor = 'prismatic';
+                else if (frame.includes('silver')) tierColor = 'silver';
+                insertAugmentReference(augmentData.augmentTitle, refIconUrl, tierColor);
+            };
+            insertBtn.onclick = (e) => e.stopPropagation();
+            container.appendChild(insertBtn);
+
             const deleteButton = document.createElement("button");
             deleteButton.innerText = "🗑️";
             deleteButton.setAttribute("class", "delete-custom-augment");
@@ -3261,6 +3401,18 @@
             image.setAttribute("src", itemIconsBaseUrl + item['filename']);
             container.appendChild(image);
 
+            const insertBtn = document.createElement("button");
+            insertBtn.innerText = "+";
+            insertBtn.setAttribute("class", "insert-reference-btn");
+            insertBtn.title = "Insert as inline reference";
+            insertBtn.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertAugmentReference(item['name'], itemIconsBaseUrl + item['filename'], 'gold');
+            };
+            insertBtn.onclick = (e) => e.stopPropagation();
+            container.appendChild(insertBtn);
+
             return container;
         }
 
@@ -3306,6 +3458,18 @@
             const image = document.createElement("img");
             image.setAttribute("src", arenaItemIconsBaseUrl + item['filename']);
             container.appendChild(image);
+
+            const insertBtn = document.createElement("button");
+            insertBtn.innerText = "+";
+            insertBtn.setAttribute("class", "insert-reference-btn");
+            insertBtn.title = "Insert as inline reference";
+            insertBtn.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertAugmentReference(item['name'], arenaItemIconsBaseUrl + item['filename'], getTierKeyword(null, item['preferredFrame']));
+            };
+            insertBtn.onclick = (e) => e.stopPropagation();
+            container.appendChild(insertBtn);
 
             return container;
         }
