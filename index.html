@@ -299,6 +299,12 @@
                             <input type="range" min="0" max="64" value="18" class="slider" id="descriptionLineHeight" oninput="updateCanvasVariable(parseInt(this.value), 'descriptionLineHeight')">
                             <output name="descriptionLineHeightOutput" for="descriptionLineHeight">18</output>
                         </div>
+
+                        <div class="sliderForm">
+                            <label for="descriptionXOffset">Description X Offset</label>
+                            <input type="range" min="0" max="512" value="256" class="slider" id="descriptionXOffset" oninput="updateCanvasVariable(parseInt(this.value), 'descriptionXOffset')">
+                            <output name="descriptionXOffsetOutput" for="descriptionXOffset">256</output>
+                        </div>
                     </div>
 
                     <!-- Advanced Screen -->
@@ -784,6 +790,7 @@
                 iconSize: loadFromLocalStorage('iconSize', 150),
                 titleYOffset: loadFromLocalStorage('titleYOffset', 324),
                 descriptionYOffset: loadFromLocalStorage('descriptionYOffset', 364),
+                descriptionXOffset: loadFromLocalStorage('descriptionXOffset', 256),
                 titleLineHeight: loadFromLocalStorage('titleLineHeight', 26),
                 descriptionLineHeight: loadFromLocalStorage('descriptionLineHeight', 18),
                 titleFont: loadFromLocalStorage('titleFont', 'bold 24px LolBeautfortBold'),
@@ -827,8 +834,8 @@
         function resetAllSettings() {
             if (confirm('Reset all saved settings to defaults? This cannot be undone.')) {
                 // Clear all localStorage items
-                const keys = ['iconXOffset', 'iconYOffset', 'iconSize', 'titleYOffset', 'descriptionYOffset', 
-                             'titleLineHeight', 'descriptionLineHeight', 'titleFont', 'descriptionFont', 
+                const keys = ['iconXOffset', 'iconYOffset', 'iconSize', 'titleYOffset', 'descriptionYOffset',
+                             'descriptionXOffset', 'titleLineHeight', 'descriptionLineHeight', 'titleFont', 'descriptionFont',
                              'customFrame', 'language'];
                 
                 keys.forEach(key => {
@@ -937,7 +944,7 @@
                             .then(numberOfTitleLines => {
                                 ctx.font = settings['descriptionFont'];
                                 const descriptionMaxWidth = settings['descriptionMaxWidth'] || 220;
-                                return wrapText(ctx, description, 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight'], true);
+                                return wrapText(ctx, description, settings['descriptionXOffset'] || 256, settings['descriptionYOffset'] + ((numberOfTitleLines - 1) * settings["titleLineHeight"]), descriptionMaxWidth, settings['descriptionLineHeight'], true);
                             })
                             .then(() => {
                                 return canvas.toDataURL(options.format, options.quality);
@@ -1895,6 +1902,7 @@
                 iconYOffset: 40,
                 titleYOffset: 324,
                 descriptionYOffset: 364,
+                descriptionXOffset: 256,
                 iconXOffset: 156,
                 iconSize: 150,
                 titleLineHeight: 26,
@@ -1981,6 +1989,7 @@
                         iconYOffset: currentSettings.iconYOffset,
                         titleYOffset: currentSettings.titleYOffset,
                         descriptionYOffset: currentSettings.descriptionYOffset,
+                        descriptionXOffset: currentSettings.descriptionXOffset || 256,
                         iconXOffset: currentSettings.iconXOffset,
                         iconSize: currentSettings.iconSize,
                         titleLineHeight: currentSettings.titleLineHeight,
@@ -2019,6 +2028,7 @@
                     iconYOffset: currentSettings.iconYOffset,
                     titleYOffset: currentSettings.titleYOffset,
                     descriptionYOffset: currentSettings.descriptionYOffset,
+                    descriptionXOffset: currentSettings.descriptionXOffset || 256,
                     iconXOffset: currentSettings.iconXOffset,
                     iconSize: currentSettings.iconSize,
                     titleLineHeight: currentSettings.titleLineHeight,
@@ -2085,6 +2095,7 @@
                     iconYOffset: 'iconYOffset',
                     titleYOffset: 'titleYOffset',
                     descriptionYOffset: 'descriptionYOffset',
+                    descriptionXOffset: 'descriptionXOffset',
                     iconXOffset: 'iconXOffset',
                     iconSize: 'iconSize',
                     titleLineHeight: 'titleLineHeight',
@@ -2916,6 +2927,7 @@
             selectedModifier: 0,
             titleYOffset: 324,
             descriptionYOffset: 364,
+            descriptionXOffset: 256,
             titleLineHeight: 26,
             descriptionLineHeight: 18,
             language: 'en_us',
@@ -3309,6 +3321,7 @@
             document.getElementById('iconSize').value = settings.iconSize;
             document.getElementById('titleYOffset').value = settings.titleYOffset;
             document.getElementById('descriptionYOffset').value = settings.descriptionYOffset;
+            document.getElementById('descriptionXOffset').value = settings.descriptionXOffset;
             document.getElementById('titleLineHeight').value = settings.titleLineHeight;
             document.getElementById('descriptionLineHeight').value = settings.descriptionLineHeight;
             document.getElementById('customFrame').value = settings.selectedFrame.replace('.png', '');
@@ -3320,6 +3333,7 @@
             document.querySelector('output[for="iconSize"]').value = settings.iconSize;
             document.querySelector('output[for="titleLineHeight"]').value = settings.titleLineHeight;
             document.querySelector('output[for="descriptionLineHeight"]').value = settings.descriptionLineHeight;
+            document.querySelector('output[for="descriptionXOffset"]').value = settings.descriptionXOffset;
 
             mergeAugmentImages();
         }
